@@ -102,11 +102,7 @@ class BotPlayer extends Player {
                 result.add(displacement.normalize().product(influence));
             }
         }
-// Dodajemy lekki losowy szum do ruchu mniej inteligentnych botów
-        if (this.errorMargin > 0) {
-            result.x += (Math.random() - 0.5) * this.errorMargin;
-            result.y += (Math.random() - 0.5) * this.errorMargin;
-        }
+
 
     // ZABEZPIECZENIE PRZED ŚCIANAMI I WARIOWANIEM:
         const border = this.server.border;
