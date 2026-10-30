@@ -60,88 +60,94 @@ class BotPlayer extends Player {
         this.decide(this.largest(this.cells));
     }
 decide(cell) {
-        if (!cell) return;
-        const result = new Vec2(0, 0);
+    if (!cell) return;
 
-        for (const node of this.viewNodes) {
-            if (node.owner == this) continue;
+    const result = new Vec2(0, 0);
 
-            const displacement = node.position.difference(cell.position);
-            let distance = displacement.dist();
+    for (const node of this.viewNodes) {
+        if (node.owner == this) continue;
 
-            if (distance > 800 * this.intelligence) continue;
+        // Zabezpieczenie przed nieznanym typem obiektu
+        if (!decideTypes[node.type]) continue;
 
-            let influence = decideTypes[node.type].call(this, node, cell);
-            if (influence == 0) continue;
+        const displacement = node.position.difference(cell.position);
+        let distance = displacement.dist();
 
-            if (influence < 0)
-                distance -= cell.radius + node.radius;
+        if (distance > 800 * this.intelligence) continue;
 
-            if (distance < 1) distance = 1;
-            
-            influence /= (distance * (2 - this.intelligence));
+        let influence = decideTypes[node.type].call(this, node, cell);
 
-            // Warunek podziału (split)
-            if (this.intelligence > 0.95 && node.type != 1 && cell.radius > node.radius * 1.15 &&
-                !this.splitCooldown && this.cells.length < 8 &&
-                400 - cell.radius / 2 - node.radius >= distance)
-            {
-                this.splitCooldown = 15;
-                this.mouse.assign(node.position);
-                this.socket.client.splitRequested = true;
-                return;
-            } else {
-                result.add(displacement.normalize().product(influence));
-            }
+        if (influence == 0) continue;
+
+        if (influence < 0) {
+            distance -= cell.radius + node.radius;
         }
 
-        // ZABEZPIECZENIE I NADANIE STABILNEGO KIERUNKU:
-        const border = this.server.border;
-        const margin = 200;
+        if (distance < 1) distance = 1;
 
-        // Jeśli bot jest blisko ściany, uciekaj do środka mapy (0,0)
-        if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
-            cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
-            
-            const center = new Vec2(0, 0);
-            const toCenter = center.difference(cell.position).normalize();
-            this.mouse.assign(cell.position.sum(toCenter.product(1000)));
-        } 
-        else {
-            // Jeśli siła wynikowa jest bliska zeru (brak jedzenia/celów w pobliżu),
-            // nadajemy botowi stały kierunek patrolu, żeby nie stał i się nie kręcił.
-            if (Math.abs(result.x) < 0.01 && Math.abs(result.y) < 0.01) {
-                this.mouse.assign(cell.position.sum(new Vec2(500, 500)));
-            } else {
-                result.normalize();
-                // Płynny ruch w kierunku wyliczonego wektora
-                this.mouse.assign(cell.position.sum(result.multiply(500)));
-            }
+        influence /= distance * (2 - this.intelligence);
+
+        // Podział, gdy bot może zjeść przeciwnika
+        if (
+            this.intelligence > 0.95 &&
+            node.type != 1 &&
+            cell.radius > node.radius * 1.15 &&
+            !this.splitCooldown &&
+            this.cells.length < 8 &&
+            400 - cell.radius / 2 - node.radius >= distance
+        ) {
+            this.splitCooldown = 15;
+            this.mouse.assign(node.position);
+            this.socket.client.splitRequested = true;
+            return;
         }
+
+        result.add(displacement.normalize().product(influence));
     }
 
-    // ZABEZPIECZENIE PRZED ŚCIANAMI I WARIOWANIEM:
-        const border = this.server.border;
-        const margin = 250; // Margines od krawędzi
+    // Sprawdzanie granic mapy
+    const border = this.server.border;
+    const margin = 250;
 
-        if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
-            cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
-            
-            // Jeśli przy ścianie -> ucieczka prosto do środka (0,0)
-            const center = new Vec2(0, 0);
-            const toCenter = center.difference(cell.position).normalize();
-            this.mouse.assign(cell.position.sum(toCenter.product(1000)));
-        } else {
-            // Całkowicie bezpieczne sprawdzenie, czy wektor wynikowy jest bliski zeru
-            if (Math.abs(result.x) < 0.01 && Math.abs(result.y) < 0.01) {
-                // Brak celów: nadajemy losowy kierunek patrolu, żeby bot nie kręcił się na środku
-                result.x = (Math.random() - 0.5) * 2;
-                result.y = (Math.random() - 0.5) * 2;
-            }
+    const nearWall =
+        cell.position.x < border.minx + margin ||
+        cell.position.x > border.maxx - margin ||
+        cell.position.y < border.miny + margin ||
+        cell.position.y > border.maxy - margin;
 
-            result.normalize();
-            // Standardowy, płynny ruch na otwartej przestrzeni
-            this.mouse.assign(cell.position.sum(result.multiply(500)));
-        }
+    if (nearWall) {
+        // Kierunek do środka mapy
+        const center = new Vec2(0, 0);
+        const toCenter = center.difference(cell.position).normalize();
 
+        this.mouse.assign(
+            cell.position.sum(toCenter.product(1000))
+        );
+
+        return;
+    }
+
+    // Brak obiektów wpływających na ruch — wybierz kierunek patrolu
+    if (Math.abs(result.x) < 0.01 && Math.abs(result.y) < 0.01) {
+        const angle = Math.random() * Math.PI * 2;
+
+        const direction = new Vec2(
+            Math.cos(angle),
+            Math.sin(angle)
+        );
+
+        this.mouse.assign(
+            cell.position.sum(direction.product(500))
+        );
+
+        return;
+    }
+
+    // Normalny ruch w wybranym kierunku
+    result.normalize();
+
+    this.mouse.assign(
+        cell.position.sum(result.product(500))
+    );
+}
 module.exports = BotPlayer;
