@@ -32,7 +32,7 @@ module.exports = Object.seal({
 // serverViewBase: Base view distance of players. Warning: high values may cause lag! Min value is 1920x1080
 // serverMinScale: Minimum viewbox scale for player (low value leads to lags due to large visible area for big cell)
 // serverSpectatorScale: Scale (field of view) used for free roam spectators (low value leads to lag, vanilla: 0.4, old vanilla: 0.25)
-// serverStatsPort: 0, Port for the stats server. Having a negative number will disable the stats server.
+// serverStatsPort: Port for the stats server. Having a negative number will disable the stats server.
 // serverStatsUpdate: Update interval of server stats in seconds
 // mobilePhysics: Whether or not the server uses mobile agar.io physics
 // badWordFilter: Toggle whether you enable bad word filter (set to 0 to disable)
@@ -48,7 +48,7 @@ module.exports = Object.seal({
 "serverViewBaseY": 1080,
 "serverMinScale": 0.15,
 "serverSpectatorScale": 0.4,
-"serverStatsPort": 88,
+"serverStatsPort": -1,
 "serverStatsUpdate": 60,
 "mobilePhysics": 0,
 "badWordFilter": 1,
