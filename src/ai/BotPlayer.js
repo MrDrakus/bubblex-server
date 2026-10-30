@@ -102,7 +102,27 @@ class BotPlayer extends Player {
                 result.add(displacement.normalize().product(influence));
             }
         }
+// Dodajemy lekki losowy szum do ruchu mniej inteligentnych botów
+        if (this.errorMargin > 0) {
+            result.x += (Math.random() - 0.5) * this.errorMargin;
+            result.y += (Math.random() - 0.5) * this.errorMargin;
+        }
 
+        // ZABEZPIECZENIE PRZED BLOKOWANIEM SIĘ NA ŚCIANACH:
+        const border = this.server.border;
+        const margin = 200; // odległość od ściany, przy której bot zaczyna reagować
+        if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
+            cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
+            
+            // Skieruj bota w stronę środka mapy (0,0)
+            const center = new Vec2(0, 0);
+            const toCenter = center.difference(cell.position).normalize();
+            result.add(toCenter.product(500));
+        }
+
+        this.mouse.assign(cell.position.sum(result.multiply(900)));
+    }
+}
         // Dodajemy lekki losowy szum do ruchu mniej inteligentnych botów
         if (this.errorMargin > 0) {
             result.x += (Math.random() - 0.5) * this.errorMargin;
