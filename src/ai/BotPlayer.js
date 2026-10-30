@@ -5,11 +5,12 @@ class BotPlayer extends Player {
     constructor(server, socket) {
         super(server, socket);
         this.isBot = true;
-        this.splitCooldown = 0; // Odblokowujemy spację, ale sterujemy nią bezpiecznie
+        this.splitCooldown = 999999; // Blokada spacji dla stuprocentowej stabilności
         this.intelligence = Math.random() * 0.6 + 0.7;
 
-        this.targetNode = null;
+        this.targetFood = null;
         this.wanderTarget = null;
+        this.targetTicks = 0; // Licznik czasu dla wybranego celu
     }
 
     largest(list) {
@@ -26,82 +27,71 @@ class BotPlayer extends Player {
         const cell = this.largest(this.cells);
         if (!cell) return;
 
-        // ZABEZPIECZENIE PRZED ŚCIANAMI:
+        // ZABEZPIECZENIE PRZED ŚCIANAMI (łagodniejsze odbicie):
         const border = this.server.border;
-        const margin = 300;
+        const margin = 150;
 
         if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
             cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
             const center = new Vec2(0, 0);
             const toCenter = center.difference(cell.position).normalize();
             this.mouse.assign(cell.position.sum(toCenter.product(1000)));
-            this.targetNode = null;
+            this.targetFood = null;
             return;
         }
 
-        // Sprawdzamy, czy obecny cel nadal istnieje
-        if (this.targetNode) {
+        // Sprawdzamy, czy obecny cel (jedzenie) nadal istnieje
+        if (this.targetFood) {
             let exists = false;
             for (const node of this.viewNodes) {
-                if (node === this.targetNode) {
+                if (node === this.targetFood) {
                     exists = true;
                     break;
                 }
             }
-            if (!exists || this.targetNode.isRemoved) {
-                this.targetNode = null;
+            this.targetTicks--;
+            if (!exists || this.targetFood.isRemoved || this.targetTicks <= 0) {
+                this.targetFood = null;
             }
         }
 
-        // Szukanie celu: jedzenie LUB mniejszy gracz (żeby mogły Cię atakować!)
-        if (!this.targetNode) {
+        // Szukamy WYŁĄCZNIE jedzenia (typ 1) - gracze i wirusy są ignorowani
+        if (!this.targetFood) {
             let minDist = Infinity;
             for (const node of this.viewNodes) {
                 if (node.owner == this) continue;
-
-                // Ignorujemy wirusy (typ 2)
-                if (node.type === 2) continue;
-
-                // Jeśli to gracz, atakujemy go tylko wtedy, gdy jest mniejszy od bota
-                if (node.owner && node.radius >= cell.radius * 0.9) continue; 
+                if (node.type !== 1) continue; // <-- Tylko jedzenie! Zero polowań na graczy.
 
                 const dist = node.position.difference(cell.position).dist();
-                if (dist < minDist && dist < 700) {
+                if (dist < minDist && dist < 600) {
                     minDist = dist;
-                    this.targetNode = node;
+                    this.targetFood = node;
                 }
             }
+            this.targetTicks = 35; // Bot trzyma cel przez chwilę, po czym szuka nowego
         }
 
         let targetPos = null;
 
-        // GŁÓWNY RUCH Z PROJEKCJĄ KIERUNKU (zapobiega drżeniu):
-        if (this.targetNode) {
-            const diff = this.targetNode.position.difference(cell.position);
+        // RUCH DO JEDZENIA LUB PATROL
+        if (this.targetFood) {
+            const diff = this.targetFood.position.difference(cell.position);
             const dist = diff.dist();
 
             if (dist < 5) {
                 targetPos = cell.position.sum(new Vec2(100, 0));
-                this.targetNode = null;
+                this.targetFood = null;
             } else {
                 const direction = diff.normalize();
                 targetPos = cell.position.sum(direction.product(1000));
             }
-
-            // KONTROLOWANE UŻYCIE SPACJI (Atak / Podział):
-            // Bot użyje spacji tylko wtedy, gdy goni gracza/atrakcyjny cel, jest odpowiednio duży i minął cooldown
-            if (this.targetNode.owner && dist < 350 && cell.mass > 45 && this.splitCooldown <= 0) {
-                this.socket.client.splitRequested = true;
-                this.splitCooldown = 40; // Odstęp między użyciami spacji
-            }
-
             this.wanderTarget = cell.position.clone();
         } 
         else {
-            // BRAK CELU: Spokojny patrol po okolicy
-            if (!this.wanderTarget || cell.position.difference(this.wanderTarget).dist() < 150) {
+            // PATROL: Jeśli brak jedzenia w zasięgu, bot płynnie krąży po okolicy
+            if (!this.wanderTarget || cell.position.difference(this.wanderTarget).dist() < 100) {
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 300 + Math.random() * 400;
+                const distance = 400 + Math.random() * 400;
                 this.wanderTarget = new Vec2(
                     cell.position.x + Math.cos(angle) * distance,
                     cell.position.y + Math.sin(angle) * distance
@@ -116,7 +106,6 @@ class BotPlayer extends Player {
             }
         }
 
-        if (this.splitCooldown > 0) this.splitCooldown--;
         this.mouse.assign(targetPos);
     }
 }
