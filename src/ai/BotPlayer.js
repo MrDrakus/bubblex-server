@@ -108,20 +108,21 @@ class BotPlayer extends Player {
             result.y += (Math.random() - 0.5) * this.errorMargin;
         }
 
-        // ZABEZPIECZENIE PRZED BLOKOWANIEM SIĘ NA ŚCIANACH:
+       // ZABEZPIECZENIE PRZED BLOKOWANIEM SIĘ NA ŚCIANACH:
         const border = this.server.border;
-        const margin = 200; // odległość od ściany, przy której bot zaczyna reagować
+        const margin = 250; // Zwiększony margines reagowania
+        
         if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
             cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
             
-            // Skieruj bota w stronę środka mapy (0,0)
+            // Ignorujemy dotychczasowe siły i nadajemy sztywny kurs prosto na środek (0,0)
             const center = new Vec2(0, 0);
             const toCenter = center.difference(cell.position).normalize();
-            result.add(toCenter.product(500));
+            
+            this.mouse.assign(cell.position.sum(toCenter.product(1000)));
+        } else {
+            // Standardowy ruch na otwartej przestrzeni
+            this.mouse.assign(cell.position.sum(result.multiply(900)));
         }
-
-        this.mouse.assign(cell.position.sum(result.multiply(900)));
-    }
-}
 
 module.exports = BotPlayer;
