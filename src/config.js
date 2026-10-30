@@ -97,7 +97,7 @@ module.exports = Object.seal({
 // foodMassGrow: Enable food mass grow ?
 "foodMinSize": 10,
 "foodMaxSize": 20,
-"foodAmount": 300,
+"foodAmount": 5000,
 "foodMassGrow": 1,
 
 // [VIRUSES]
