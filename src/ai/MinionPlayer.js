@@ -34,17 +34,13 @@ class MinionPlayer extends Player {
             return;
         }
 
-        // Bezpieczne mapowanie pozycji myszy właściciela dla miniona,
-        // zapobiegające drżeniu, gdy kursor właściciela pokrywa się z minionem
         const ownerMouse = this.owner.mouse;
         const diff = ownerMouse.difference(cell.position);
         const dist = diff.dist();
 
         if (dist < 5) {
-            // Jeśli kursor właściciela jest na minionie, wymuszamy ruch naprzód zamiast drżenia
             this.mouse = cell.position.sum(new Vec2(100, 0));
         } else {
-            // Rzutujemy kursor w kierunku myszy właściciela, ale zachowujemy bezpieczny dystans
             const direction = diff.normalize();
             this.mouse = cell.position.sum(direction.product(1000));
         }
