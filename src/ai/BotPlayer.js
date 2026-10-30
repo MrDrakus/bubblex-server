@@ -5,7 +5,7 @@ class BotPlayer extends Player {
     constructor(server, socket) {
         super(server, socket);
         this.isBot = true;
-        this.splitCooldown = 0;
+        this.splitCooldown = 0; // Licznik cooldownu dla spacji
         this.intelligence = Math.random() * 0.6 + 0.7;
 
         this.targetNode = null;
@@ -55,7 +55,7 @@ class BotPlayer extends Player {
             }
         }
 
-        // Wybór celu: jedzenie LUB mniejszy gracz/bot (wzajemne ataki!)
+        // Wybór celu: jedzenie LUB mniejszy gracz / bot do zaatakowania
         if (!this.targetNode) {
             let bestScore = -Infinity;
             for (const node of this.viewNodes) {
@@ -67,9 +67,9 @@ class BotPlayer extends Player {
 
                 let score = 0;
                 if (node.type === 1) {
-                    score = 1000 - dist; // Jedzenie
+                    score = 1000 - dist; // Zwykłe jedzenie
                 } else if (node.owner && node.radius < cell.radius * 0.85) {
-                    score = 5000 - dist + (cell.radius - node.radius); // Mniejszy gracz/bot do zjedzenia
+                    score = 5000 - dist + (cell.radius - node.radius); // Mniejszy cel do zjedzenia
                 } else {
                     continue;
                 }
@@ -96,11 +96,12 @@ class BotPlayer extends Player {
                 targetPos = cell.position.sum(direction.product(1000));
             }
 
-            // Kontrolowane użycie spacji do ataku na innego gracza/bota
-            if (this.targetNode.owner && dist < 400 && cell.mass > 36 && this.splitCooldown <= 0) {
-                if (cell.mass > this.targetNode.mass * 2) {
+            // --- AKTYWNE UŻYCIE SPACJI DO ATAKU ---
+            // Bot użyje spacji, jeśli cel to gracz/bot, jest blisko, bot ma odpowiednią masę i minął cooldown
+            if (this.targetNode.owner && dist < 450 && cell.mass > 40 && this.splitCooldown <= 0) {
+                if (cell.mass > this.targetNode.mass * 1.5) {
                     this.socket.client.splitRequested = true;
-                    this.splitCooldown = 50;
+                    this.splitCooldown = 60; // Blokada przed kolejnym szybkim podziałem
                 }
             }
 
