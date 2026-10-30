@@ -8,9 +8,9 @@ class BotPlayer extends Player {
         this.splitCooldown = 0;
         this.intelligence = Math.random() * 0.6 + 0.7;
 
-        this.targetNode = null;
-        this.wanderTarget = null;
-        this.targetTicks = 0;
+        // Losowy kierunek początkowy bota
+        this.moveAngle = Math.random() * Math.PI * 2;
+        this.changeDirTimer = 0;
     }
 
     largest(list) {
@@ -27,105 +27,71 @@ class BotPlayer extends Player {
         const cell = this.largest(this.cells);
         if (!cell) return;
 
-        // Zabezpieczenie przed ścianami (płynne odbicie do środka)
         const border = this.server.border;
-        const margin = 200;
+        const margin = 250;
 
+        // 1. Bezpieczne odbicie od ścian mapy, żeby nigdy się nie zbugować
         if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
             cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
             const center = new Vec2(0, 0);
-            const toCenter = center.difference(cell.position).normalize();
-            this.mouse.assign(cell.position.sum(toCenter.product(1000)));
-            this.targetNode = null;
+            this.moveAngle = center.difference(cell.position).angle();
+            this.mouse.assign(cell.position.sum(new Vec2(Math.cos(this.moveAngle) * 1000, Math.sin(this.moveAngle) * 1000)));
             return;
         }
 
-        // Walidacja obecnego celu
-        if (this.targetNode) {
-            let exists = false;
-            for (const node of this.viewNodes) {
-                if (node === this.targetNode) {
-                    exists = true;
-                    break;
-                }
-            }
-            this.targetTicks--;
-            if (!exists || this.targetNode.isRemoved || this.targetTicks <= 0) {
-                this.targetNode = null;
+        // 2. Szukanie najbliższego jedzenia lub mniejszego gracza w polu widzenia
+        let bestTarget = null;
+        let minDist = Infinity;
+
+        for (const node of this.viewNodes) {
+            if (node.owner === this) continue;
+            if (node.type === 2) continue; // Ignorujemy wirusy
+
+            // Jeśli to gracz/bot, atakujemy tylko gdy jest mniejszy
+            if (node.owner && node.radius >= cell.radius * 0.85) continue;
+
+            const dist = node.position.difference(cell.position).dist();
+            if (dist < minDist && dist < 700) {
+                minDist = dist;
+                bestTarget = node;
             }
         }
 
-        // Wybór celu: jedzenie LUB mniejszy gracz/bot (wzajemne ataki!)
-        if (!this.targetNode) {
-            let bestScore = -Infinity;
-            for (const node of this.viewNodes) {
-                if (node.owner === this) continue;
-                if (node.type === 2) continue; // Ignorujemy wirusy
-
-                const dist = node.position.difference(cell.position).dist();
-                if (dist > 800) continue;
-
-                let score = 0;
-                if (node.type === 1) {
-                    score = 1000 - dist; // Jedzenie
-                } else if (node.owner && node.radius < cell.radius * 0.85) {
-                    score = 5000 - dist + (cell.radius - node.radius); // Mniejszy gracz/bot do zjedzenia
-                } else {
-                    continue;
-                }
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    this.targetNode = node;
-                }
-            }
-            this.targetTicks = 25;
-        }
-
-        let targetPos = null;
-
-        if (this.targetNode) {
-            const diff = this.targetNode.position.difference(cell.position);
+        // 3. Ruch: jeśli widzi cel, jedzie do niego; jeśli nie, płynnie patroluje teren
+        if (bestTarget) {
+            const diff = bestTarget.position.difference(cell.position);
             const dist = diff.dist();
 
             if (dist < 5) {
-                targetPos = cell.position.sum(new Vec2(100, 0));
-                this.targetNode = null;
+                this.mouse.assign(cell.position.sum(new Vec2(100, 0)));
             } else {
                 const direction = diff.normalize();
-                targetPos = cell.position.sum(direction.product(1000));
+                this.mouse.assign(cell.position.sum(direction.product(1000)));
             }
 
-            // Kontrolowane użycie spacji do ataku na innego gracza/bota
-            if (this.targetNode.owner && dist < 400 && cell.mass > 36 && this.splitCooldown <= 0) {
-                if (cell.mass > this.targetNode.mass * 2) {
+            // Użycie spacji (podziału) do ataku na mniejszy cel
+            if (bestTarget.owner && dist < 350 && cell.mass > 40 && this.splitCooldown <= 0) {
+                if (cell.mass > bestTarget.mass * 1.5) {
                     this.socket.client.splitRequested = true;
                     this.splitCooldown = 50;
                 }
             }
-
-            this.wanderTarget = cell.position.clone();
         } else {
-            // Spokojny patrol, gdy brak celów w pobliżu
-            if (!this.wanderTarget || cell.position.difference(this.wanderTarget).dist() < 150) {
-                const angle = Math.random() * Math.PI * 2;
-                const distance = 400 + Math.random() * 400;
-                this.wanderTarget = new Vec2(
-                    cell.position.x + Math.cos(angle) * distance,
-                    cell.position.y + Math.sin(angle) * distance
-                );
+            // Płynny patrol w losowym kierunku ze zmianą co jakiś czas
+            this.changeDirTimer--;
+            if (this.changeDirTimer <= 0) {
+                this.moveAngle += (Math.random() - 0.5) * 1.5;
+                this.changeDirTimer = Math.floor(Math.random() * 40) + 20;
             }
-            const diffPatrol = this.wanderTarget.difference(cell.position);
-            if (diffPatrol.dist() < 5) {
-                targetPos = cell.position.sum(new Vec2(100, 0));
-            } else {
-                const direction = diffPatrol.normalize();
-                targetPos = cell.position.sum(direction.product(1000));
-            }
+
+            const targetPos = cell.position.sum(new Vec2(
+                Math.cos(this.moveAngle) * 1000,
+                Math.sin(this.moveAngle) * 1000
+            ));
+            this.mouse.assign(targetPos);
         }
 
         if (this.splitCooldown > 0) this.splitCooldown--;
-        this.mouse.assign(targetPos);
     }
 }
 
