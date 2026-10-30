@@ -123,14 +123,5 @@ class BotPlayer extends Player {
         this.mouse.assign(cell.position.sum(result.multiply(900)));
     }
 }
-        // Dodajemy lekki losowy szum do ruchu mniej inteligentnych botów
-        if (this.errorMargin > 0) {
-            result.x += (Math.random() - 0.5) * this.errorMargin;
-            result.y += (Math.random() - 0.5) * this.errorMargin;
-        }
-
-        this.mouse.assign(cell.position.sum(result.multiply(900)));
-    }
-}
 
 module.exports = BotPlayer;
