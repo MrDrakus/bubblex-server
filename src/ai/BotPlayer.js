@@ -53,11 +53,13 @@ class BotPlayer extends Player {
             }
         }
 
-        // Jeśli nie ma celu, szukamy najbliższego jedzenia w promieniu 600 px
+        // Jeśli nie ma celu, szukamy WYŁĄCZNIE JEDZENIA (typ 1) w promieniu 600 px
         if (!this.targetFood) {
             let minDist = Infinity;
             for (const node of this.viewNodes) {
                 if (node.owner == this) continue;
+                if (node.type !== 1) continue; // <-- KLUCZOWE: ignorujemy wirusy i graczy, bierzemy tylko jedzenie!
+
                 const dist = node.position.difference(cell.position).dist();
                 if (dist < minDist && dist < 600) {
                     minDist = dist;
@@ -68,10 +70,19 @@ class BotPlayer extends Player {
 
         let targetPos = null;
 
-        // GŁÓWNY RUCH Z PROJEKCJĄ KIERUNKU (zapobiega drżeniu blisko celu):
+        // GŁÓWNY RUCH Z BEZPIECZNĄ PROJEKCJĄ KIERUNKU:
         if (this.targetFood) {
-            const direction = this.targetFood.position.difference(cell.position).normalize();
-            targetPos = cell.position.sum(direction.product(1000));
+            const diff = this.targetFood.position.difference(cell.position);
+            const dist = diff.dist();
+
+            // Jeśli bot jest już ekstremalnie blisko jedzenia, gładko jedziemy naprzód zamiast dzielić przez zero
+            if (dist < 5) {
+                targetPos = cell.position.sum(new Vec2(100, 0));
+                this.targetFood = null; // Cel zjedzony, szukamy nowego
+            } else {
+                const direction = diff.normalize();
+                targetPos = cell.position.sum(direction.product(1000));
+            }
             this.wanderTarget = cell.position.clone();
         } 
         else {
@@ -84,8 +95,13 @@ class BotPlayer extends Player {
                     cell.position.y + Math.sin(angle) * distance
                 );
             }
-            const direction = this.wanderTarget.difference(cell.position).normalize();
-            targetPos = cell.position.sum(direction.product(1000));
+            const diffPatrol = this.wanderTarget.difference(cell.position);
+            if (diffPatrol.dist() < 5) {
+                targetPos = cell.position.sum(new Vec2(100, 0));
+            } else {
+                const direction = diffPatrol.normalize();
+                targetPos = cell.position.sum(direction.product(1000));
+            }
         }
 
         this.mouse.assign(targetPos);
