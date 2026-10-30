@@ -108,7 +108,7 @@ class BotPlayer extends Player {
             result.y += (Math.random() - 0.5) * this.errorMargin;
         }
 
-        // ZABEZPIECZENIE PRZED ŚCIANAMI I WARIOWANIEM:
+     // ZABEZPIECZENIE PRZED ŚCIANAMI I WARIOWANIEM:
         const border = this.server.border;
         const margin = 250; // Margines od krawędzi
 
@@ -120,14 +120,17 @@ class BotPlayer extends Player {
             const toCenter = center.difference(cell.position).normalize();
             this.mouse.assign(cell.position.sum(toCenter.product(1000)));
         } else {
-            // Normalizujemy wektor wynikowy, żeby siły z otoczenia się nie "przelewały" i nie glicowały bota
-            if (result.x !== 0 || result.y !== 0) {
-                result.normalize();
+            // Sprawdzamy, czy siła wynikowa w ogóle istnieje (czy bot widzi jakiekolwiek cele)
+            if (result.dist() < 0.05) {
+                // Brak celów / siły się zniosły: dodajemy delikatny losowy wektor patrolowy, 
+     // żeby bot nie stanął w miejscu i nie zaczął się kręcić w kółko na własnym środku
+                result.x = (Math.random() - 0.5) * 2;
+                result.y = (Math.random() - 0.5) * 2;
             }
+
+            result.normalize();
             // Standardowy, płynny ruch na otwartej przestrzeni
             this.mouse.assign(cell.position.sum(result.multiply(500)));
         }
-    }
-}
 
 module.exports = BotPlayer;
