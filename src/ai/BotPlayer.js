@@ -8,11 +8,9 @@ class BotPlayer extends Player {
         this.splitCooldown = 999999;
         this.intelligence = Math.random() * 0.6 + 0.7;
 
-        this.targetFood = null; // Stały cel, którego bot się trzyma
-        this.wanderTarget = new Vec2(
-            (Math.random() - 0.5) * 3000,
-            (Math.random() - 0.5) * 3000
-        );
+        this.targetFood = null;
+        // Zaczynamy z punktem patrolu przed botem
+        this.wanderTarget = null;
     }
 
     largest(list) {
@@ -40,7 +38,7 @@ class BotPlayer extends Player {
             return;
         }
 
-        // Sprawdzamy, czy obecny cel nadal istnieje w polu widzenia
+        // Sprawdzamy czy obecny cel nadal żyje i jest w zasięgu wzroku
         if (this.targetFood) {
             let exists = false;
             for (const node of this.viewNodes) {
@@ -54,29 +52,36 @@ class BotPlayer extends Player {
             }
         }
 
-        // Jeśli bot nie ma celu, wybiera najbliższe jedzenie RAZ i trzyma się go
+        // Jeśli nie ma celu, szukamy najbliższego jedzenia w promieniu 600 px
         if (!this.targetFood) {
             let minDist = Infinity;
             for (const node of this.viewNodes) {
                 if (node.owner == this) continue;
+                // Interesuje nas tylko jedzenie lub mniejsze obiekty (typ 1)
                 const dist = node.position.difference(cell.position).dist();
-                if (dist < minDist && dist < 700) {
+                if (dist < minDist && dist < 600) {
                     minDist = dist;
                     this.targetFood = node;
                 }
             }
         }
 
-        // JEŚLI MAMY CEL: jedziemy płynnie w jego stronę
+        // GŁÓWNY RUCH:
         if (this.targetFood) {
+            // Jedzie prosto do wybranego jedzenia
             this.mouse.assign(this.targetFood.position);
+            // Aktualizujemy punkt patrolu na bieżącą pozycję, żeby po zjedzeniu nie skakał
+            this.wanderTarget = cell.position.clone();
         } 
         else {
-            // PATROL: jeśli brak jedzenia, jedzie do punktu patrolu
-            if (cell.position.difference(this.wanderTarget).dist() < 200) {
+            // BRAK JEDZENIA: Spokojny patrol
+            if (!this.wanderTarget || cell.position.difference(this.wanderTarget).dist() < 150) {
+                // Wybieramy nowy losowy punkt w pobliżu, zamiast skakać przez całą mapę
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 300 + Math.random() * 400;
                 this.wanderTarget = new Vec2(
-                    (Math.random() - 0.5) * 3000,
-                    (Math.random() - 0.5) * 3000
+                    cell.position.x + Math.cos(angle) * distance,
+                    cell.position.y + Math.sin(angle) * distance
                 );
             }
             this.mouse.assign(this.wanderTarget);
