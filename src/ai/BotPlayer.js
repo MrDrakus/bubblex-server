@@ -60,94 +60,45 @@ class BotPlayer extends Player {
         this.decide(this.largest(this.cells));
     }
 decide(cell) {
-    if (!cell) return;
+        if (!cell) return;
 
-    const result = new Vec2(0, 0);
+        // Szukamy najbliższego jedzenia lub atrakcyjnego obiektu
+        let closestTarget = null;
+        let minDistance = Infinity;
 
-    for (const node of this.viewNodes) {
-        if (node.owner == this) continue;
+        for (const node of this.viewNodes) {
+            if (node.owner == this) continue;
 
-        // Zabezpieczenie przed nieznanym typem obiektu
-        if (!decideTypes[node.type]) continue;
+            // Ignorujemy duże obiekty, jeśli bot jest za mały (uproszczone dla płynności)
+            const displacement = node.position.difference(cell.position);
+            const distance = displacement.dist();
 
-        const displacement = node.position.difference(cell.position);
-        let distance = displacement.dist();
-
-        if (distance > 800 * this.intelligence) continue;
-
-        let influence = decideTypes[node.type].call(this, node, cell);
-
-        if (influence == 0) continue;
-
-        if (influence < 0) {
-            distance -= cell.radius + node.radius;
+            if (distance < minDistance && distance < 800 * this.intelligence) {
+                minDistance = distance;
+                closestTarget = node;
+            }
         }
 
-        if (distance < 1) distance = 1;
+        // ZABEZPIECZENIE PRZED ŚCIANAMI:
+        const border = this.server.border;
+        const margin = 200;
 
-        influence /= distance * (2 - this.intelligence);
-
-        // Podział, gdy bot może zjeść przeciwnika
-        if (
-            this.intelligence > 0.95 &&
-            node.type != 1 &&
-            cell.radius > node.radius * 1.15 &&
-            !this.splitCooldown &&
-            this.cells.length < 8 &&
-            400 - cell.radius / 2 - node.radius >= distance
-        ) {
-            this.splitCooldown = 15;
-            this.mouse.assign(node.position);
-            this.socket.client.splitRequested = true;
+        if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
+            cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
+            
+            // Ucieczka do środka mapy (0,0)
+            const center = new Vec2(0, 0);
+            const toCenter = center.difference(cell.position).normalize();
+            this.mouse.assign(cell.position.sum(toCenter.product(1000)));
             return;
         }
 
-        result.add(displacement.normalize().product(influence));
+        // JEŚLI BOT WIDZI CEL (np. jedzenie): płynie prosto do niego
+        if (closestTarget) {
+            this.mouse.assign(closestTarget.position);
+        } else {
+            // JEŚLI BRAK CELU: jedzie prosto przed siebie (brak kręcenia się w miejscu)
+            this.mouse.assign(cell.position.sum(new Vec2(500, 0)));
+        }
     }
-
-    // Sprawdzanie granic mapy
-    const border = this.server.border;
-    const margin = 250;
-
-    const nearWall =
-        cell.position.x < border.minx + margin ||
-        cell.position.x > border.maxx - margin ||
-        cell.position.y < border.miny + margin ||
-        cell.position.y > border.maxy - margin;
-
-    if (nearWall) {
-        // Kierunek do środka mapy
-        const center = new Vec2(0, 0);
-        const toCenter = center.difference(cell.position).normalize();
-
-        this.mouse.assign(
-            cell.position.sum(toCenter.product(1000))
-        );
-
-        return;
-    }
-
-    // Brak obiektów wpływających na ruch — wybierz kierunek patrolu
-    if (Math.abs(result.x) < 0.01 && Math.abs(result.y) < 0.01) {
-        const angle = Math.random() * Math.PI * 2;
-
-        const direction = new Vec2(
-            Math.cos(angle),
-            Math.sin(angle)
-        );
-
-        this.mouse.assign(
-            cell.position.sum(direction.product(500))
-        );
-
-        return;
-    }
-
-    // Normalny ruch w wybranym kierunku
-    result.normalize();
-
-    this.mouse.assign(
-        cell.position.sum(result.product(500))
-    );
-}
 module.exports = BotPlayer;
