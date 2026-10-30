@@ -432,7 +432,7 @@ class Server {
         }
     }
     timerLoop() {
-        var timeStep = 16; // vanilla: 40
+        var timeStep = 20; // vanilla: 40
         var ts = Date.now();
         var dt = ts - this.timeStamp;
         if (dt < timeStep - 5) {
