@@ -8,7 +8,6 @@ class BotPlayer extends Player {
         this.splitCooldown = 0;
         this.intelligence = Math.random() * 0.6 + 0.7;
 
-        // Losowy kierunek początkowy bota
         this.moveAngle = Math.random() * Math.PI * 2;
         this.changeDirTimer = 0;
     }
@@ -28,18 +27,22 @@ class BotPlayer extends Player {
         if (!cell) return;
 
         const border = this.server.border;
-        const margin = 250;
+        const margin = 400; // Zwiększony margines, żeby bot reagował wcześniej przed ścianą
 
-        // 1. Bezpieczne odbicie od ścian mapy, żeby nigdy się nie zbugować
+        // 1. SILNE ODBICIE OD ŚCIAN: Natychmiastowo kierujemy bota do środka mapy, gdy podjdzie za blisko krawędzi
         if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
             cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
-            const center = new Vec2(0, 0);
-            this.moveAngle = center.difference(cell.position).angle();
+            
+            const centerX = (border.minx + border.maxx) / 2;
+            const centerY = (border.miny + border.maxy) / 2;
+            const centerVec = new Vec2(centerX, centerY);
+            
+            this.moveAngle = centerVec.difference(cell.position).angle();
             this.mouse.assign(cell.position.sum(new Vec2(Math.cos(this.moveAngle) * 1000, Math.sin(this.moveAngle) * 1000)));
             return;
         }
 
-        // 2. Szukanie najbliższego jedzenia lub mniejszego gracza w polu widzenia
+        // 2. Szukanie jedzenia lub mniejszego gracza/bota
         let bestTarget = null;
         let minDist = Infinity;
 
@@ -57,7 +60,7 @@ class BotPlayer extends Player {
             }
         }
 
-        // 3. Ruch: jeśli widzi cel, jedzie do niego; jeśli nie, płynnie patroluje teren
+        // 3. Ruch i aktywne użycie spacji (funkcja split() zamiast samej flaki klienta)
         if (bestTarget) {
             const diff = bestTarget.position.difference(cell.position);
             const dist = diff.dist();
@@ -69,15 +72,20 @@ class BotPlayer extends Player {
                 this.mouse.assign(cell.position.sum(direction.product(1000)));
             }
 
-            // Użycie spacji (podziału) do ataku na mniejszy cel
-            if (bestTarget.owner && dist < 350 && cell.mass > 40 && this.splitCooldown <= 0) {
+            // BEZPOŚREDNIE WYWOŁANIE PODZIAŁU (SPACJA)
+            if (bestTarget.owner && dist < 450 && cell.mass > 36 && this.splitCooldown <= 0) {
                 if (cell.mass > bestTarget.mass * 1.5) {
-                    this.socket.client.splitRequested = true;
-                    this.splitCooldown = 50;
+                    // Wywołujemy natywne rozdzielenie gracza w MultiOgar
+                    if (typeof this.split === 'function') {
+                        this.split();
+                    } else {
+                        this.socket.client.splitRequested = true;
+                    }
+                    this.splitCooldown = 40; // Cooldown, żeby nie spamować
                 }
             }
         } else {
-            // Płynny patrol w losowym kierunku ze zmianą co jakiś czas
+            // Płynny patrol po mapie
             this.changeDirTimer--;
             if (this.changeDirTimer <= 0) {
                 this.moveAngle += (Math.random() - 0.5) * 1.5;
