@@ -59,8 +59,7 @@ class BotPlayer extends Player {
         if (this.splitCooldown) --this.splitCooldown;
         this.decide(this.largest(this.cells));
     }
-
-    decide(cell) {
+decide(cell) {
         if (!cell) return;
         const result = new Vec2(0, 0);
 
@@ -70,39 +69,56 @@ class BotPlayer extends Player {
             const displacement = node.position.difference(cell.position);
             let distance = displacement.dist();
 
-            // Głupsze boty mają mniejszy "zasięg wzroku" – ignorują obiekty zbyt daleko
             if (distance > 800 * this.intelligence) continue;
 
-            // Make decisions
             let influence = decideTypes[node.type].call(this, node, cell);
-
-            // Conclude decisions
             if (influence == 0) continue;
 
             if (influence < 0)
-                distance -= cell.radius + node.radius; // Get edge distance
+                distance -= cell.radius + node.radius;
 
             if (distance < 1) distance = 1;
             
-            // Mądrzejsze boty precyzyjniej kalkulują siłę odległości
             influence /= (distance * (2 - this.intelligence));
 
-            // Splitting conditions
+            // Warunek podziału (split)
             if (this.intelligence > 0.95 && node.type != 1 && cell.radius > node.radius * 1.15 &&
                 !this.splitCooldown && this.cells.length < 8 &&
                 400 - cell.radius / 2 - node.radius >= distance)
             {
-                // Splitkill the target
                 this.splitCooldown = 15;
                 this.mouse.assign(node.position);
                 this.socket.client.splitRequested = true;
                 return;
             } else {
-                // Produce force vector exerted by this entity on the cell
                 result.add(displacement.normalize().product(influence));
             }
         }
 
+        // ZABEZPIECZENIE I NADANIE STABILNEGO KIERUNKU:
+        const border = this.server.border;
+        const margin = 200;
+
+        // Jeśli bot jest blisko ściany, uciekaj do środka mapy (0,0)
+        if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
+            cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
+            
+            const center = new Vec2(0, 0);
+            const toCenter = center.difference(cell.position).normalize();
+            this.mouse.assign(cell.position.sum(toCenter.product(1000)));
+        } 
+        else {
+            // Jeśli siła wynikowa jest bliska zeru (brak jedzenia/celów w pobliżu),
+            // nadajemy botowi stały kierunek patrolu, żeby nie stał i się nie kręcił.
+            if (Math.abs(result.x) < 0.01 && Math.abs(result.y) < 0.01) {
+                this.mouse.assign(cell.position.sum(new Vec2(500, 500)));
+            } else {
+                result.normalize();
+                // Płynny ruch w kierunku wyliczonego wektora
+                this.mouse.assign(cell.position.sum(result.multiply(500)));
+            }
+        }
+    }
 
     // ZABEZPIECZENIE PRZED ŚCIANAMI I WARIOWANIEM:
         const border = this.server.border;
