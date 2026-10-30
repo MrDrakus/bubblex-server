@@ -67,7 +67,6 @@ class BotPlayer extends Player {
         for (const node of this.viewNodes) {
             if (node.owner == this) continue;
 
-            // Obliczamy odległość na starcie pętli
             const displacement = node.position.difference(cell.position);
             let distance = displacement.dist();
 
@@ -78,19 +77,17 @@ class BotPlayer extends Player {
             let influence = decideTypes[node.type].call(this, node, cell);
 
             // Conclude decisions
-            // Apply influence if it isn't 0
             if (influence == 0) continue;
 
             if (influence < 0)
                 distance -= cell.radius + node.radius; // Get edge distance
 
-            // The farther they are the smaller influence it is
             if (distance < 1) distance = 1;
             
             // Mądrzejsze boty precyzyjniej kalkulują siłę odległości
             influence /= (distance * (2 - this.intelligence));
 
-            // Splitting conditions (inteligentniejsze boty częściej próbują split-killa)
+            // Splitting conditions
             if (this.intelligence > 0.95 && node.type != 1 && cell.radius > node.radius * 1.15 &&
                 !this.splitCooldown && this.cells.length < 8 &&
                 400 - cell.radius / 2 - node.radius >= distance)
