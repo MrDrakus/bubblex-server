@@ -22,8 +22,12 @@ class BotPlayer extends Player {
             this.server.mode.onPlayerSpawn(this.server, this);
     }
 
-    sendUpdate() {
-        this.decide(this.largest(this.cells));
+  sendUpdate() {
+        if (this.splitCooldown) --this.splitCooldown;
+        
+        // TEST: Zmusi boty do patrzenia w jeden stały punkt (np. środek mapy 0,0)
+        this.mouse.assign(new Vec2(0, 0));
+    }
     }
 
     decide(cell) {
