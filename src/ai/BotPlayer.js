@@ -8,6 +8,7 @@ class BotPlayer extends Player {
         this.splitCooldown = 0;
         this.intelligence = Math.random() * 0.6 + 0.7;
 
+        this.targetNode = null;
         this.moveAngle = Math.random() * Math.PI * 2;
         this.changeDirTimer = 0;
     }
@@ -27,76 +28,100 @@ class BotPlayer extends Player {
         if (!cell) return;
 
         const border = this.server.border;
-        const margin = 400; // Zwiększony margines, żeby bot reagował wcześniej przed ścianą
+        const margin = 300;
 
-        // 1. SILNE ODBICIE OD ŚCIAN: Natychmiastowo kierujemy bota do środka mapy, gdy podjdzie za blisko krawędzi
+        // 1. Zabezpieczenie przed ścianami: natychmiastowy zwrot do środka mapy
         if (cell.position.x < border.minx + margin || cell.position.x > border.maxx - margin ||
             cell.position.y < border.miny + margin || cell.position.y > border.maxy - margin) {
-            
             const centerX = (border.minx + border.maxx) / 2;
             const centerY = (border.miny + border.maxy) / 2;
             const centerVec = new Vec2(centerX, centerY);
             
             this.moveAngle = centerVec.difference(cell.position).angle();
+            this.targetNode = null; // Gasi cel, żeby uciec od ściany
             this.mouse.assign(cell.position.sum(new Vec2(Math.cos(this.moveAngle) * 1000, Math.sin(this.moveAngle) * 1000)));
             return;
         }
 
-        // 2. Szukanie jedzenia lub mniejszego gracza/bota
-        let bestTarget = null;
-        let minDist = Infinity;
-
-        for (const node of this.viewNodes) {
-            if (node.owner === this) continue;
-            if (node.type === 2) continue; // Ignorujemy wirusy
-
-            // Jeśli to gracz/bot, atakujemy tylko gdy jest mniejszy
-            if (node.owner && node.radius >= cell.radius * 0.85) continue;
-
-            const dist = node.position.difference(cell.position).dist();
-            if (dist < minDist && dist < 700) {
-                minDist = dist;
-                bestTarget = node;
+        // 2. Sprawdzanie i walidacja obecnego celu
+        if (this.targetNode) {
+            let exists = false;
+            for (const node of this.viewNodes) {
+                if (node === this.targetNode) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists || this.targetNode.isRemoved) {
+                this.targetNode = null;
+            } else {
+                // KLUCZOWE: Jeśli bot jest już blisko celu (< 40px), odpuszcza go, 
+                // żeby nie jitterować (nie trząść się) nad samą kropką jedzenia!
+                const dist = this.targetNode.position.difference(cell.position).dist();
+                if (dist < 40) {
+                    this.targetNode = null;
+                }
             }
         }
 
-        // 3. Ruch i aktywne użycie spacji (funkcja split() zamiast samej flaki klienta)
-        if (bestTarget) {
-            const diff = bestTarget.position.difference(cell.position);
-            const dist = diff.dist();
+        // 3. Szukanie nowego celu (jedzenie lub mniejszy gracz)
+        if (!this.targetNode) {
+            let bestTarget = null;
+            let minDist = Infinity;
 
-            if (dist < 5) {
-                this.mouse.assign(cell.position.sum(new Vec2(100, 0)));
-            } else {
-                const direction = diff.normalize();
-                this.mouse.assign(cell.position.sum(direction.product(1000)));
+            for (const node of this.viewNodes) {
+                if (node.owner === this) continue;
+                if (node.type === 2) continue; // Ignorujemy wirusy
+
+                // Atakujemy gracza/bota tylko wtedy, gdy jest mniejszy
+                if (node.owner && node.radius >= cell.radius * 0.85) continue;
+
+                const dist = node.position.difference(cell.position).dist();
+                if (dist < minDist && dist < 600) {
+                    minDist = dist;
+                    bestTarget = node;
+                }
             }
 
-            // BEZPOŚREDNIE WYWOŁANIE PODZIAŁU (SPACJA)
-            if (bestTarget.owner && dist < 450 && cell.mass > 36 && this.splitCooldown <= 0) {
-                if (cell.mass > bestTarget.mass * 1.5) {
-                    // Wywołujemy natywne rozdzielenie gracza w MultiOgar
+            if (bestTarget) {
+                this.targetNode = bestTarget;
+            }
+        }
+
+        // 4. Sterowanie ruchem za pomocą stabilnego kąta
+        if (this.targetNode) {
+            const diff = this.targetNode.position.difference(cell.position);
+            this.moveAngle = diff.angle(); // Używamy stabilnego kąta zamiast surowego wektora
+
+            // Rzutujemy mysz daleko wprzód w kierunku celu
+            this.mouse.assign(cell.position.sum(new Vec2(
+                Math.cos(this.moveAngle) * 1000,
+                Math.sin(this.moveAngle) * 1000
+            )));
+
+            // Użycie spacji (podziału) do ataku na mniejszego gracza
+            if (this.targetNode.owner && diff.dist() < 400 && cell.mass > 40 && this.splitCooldown <= 0) {
+                if (cell.mass > this.targetNode.mass * 1.5) {
                     if (typeof this.split === 'function') {
                         this.split();
                     } else {
                         this.socket.client.splitRequested = true;
                     }
-                    this.splitCooldown = 40; // Cooldown, żeby nie spamować
+                    this.splitCooldown = 50;
                 }
             }
         } else {
-            // Płynny patrol po mapie
+            // Płynny patrol, gdy brak celów w pobliżu
             this.changeDirTimer--;
             if (this.changeDirTimer <= 0) {
-                this.moveAngle += (Math.random() - 0.5) * 1.5;
-                this.changeDirTimer = Math.floor(Math.random() * 40) + 20;
+                this.moveAngle += (Math.random() - 0.5) * 1.0;
+                this.changeDirTimer = Math.floor(Math.random() * 50) + 25;
             }
 
-            const targetPos = cell.position.sum(new Vec2(
+            this.mouse.assign(cell.position.sum(new Vec2(
                 Math.cos(this.moveAngle) * 1000,
                 Math.sin(this.moveAngle) * 1000
-            ));
-            this.mouse.assign(targetPos);
+            )));
         }
 
         if (this.splitCooldown > 0) this.splitCooldown--;
