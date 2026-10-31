@@ -429,27 +429,20 @@
       ws.send(buf);
     }
 
-    // Bezpieczny spawn w protokole 5 z kodowaniem UTF-8 i obsługą fallbacku
+    // Kodowanie UTF-16LE z terminatorem null zapobiegające chińskim znakom
     function sendSpawn(nick) {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-      try {
-        const encoder = new TextEncoder();
-        const nickBytes = encoder.encode(nick);
-        const buf = new Uint8Array(1 + nickBytes.length);
-        buf[0] = 0;
-        buf.set(nickBytes, 1);
-        ws.send(buf.buffer);
-      } catch (e) {
-        // Fallback dla starszych klientów
-        const buf = new ArrayBuffer(1 + nick.length * 2);
-        const view = new DataView(buf);
-        view.setUint8(0, 0);
-        for (let i = 0; i < nick.length; i++) {
-          view.setUint16(1 + i * 2, nick.charCodeAt(i), true);
-        }
-        ws.send(buf);
+      const buf = new ArrayBuffer(1 + (nick.length + 1) * 2);
+      const view = new DataView(buf);
+      view.setUint8(0, 0);
+
+      for (let i = 0; i < nick.length; i++) {
+        view.setUint16(1 + i * 2, nick.charCodeAt(i), true);
       }
+      view.setUint16(1 + nick.length * 2, 0, true);
+
+      ws.send(buf);
     }
 
     function handleServerMessage(view) {
@@ -683,7 +676,8 @@
     btnPlay.addEventListener("click", () => {
       if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
 
-      const rawNick = document.getElementById("nick").value.trim() || "Gracz";
+      const inputVal = document.getElementById("nick").value.trim();
+      const rawNick = inputVal.length > 0 ? inputVal : "Gracz";
       const rank = document.getElementById("rankSelect").value;
 
       let finalNick = rawNick;
