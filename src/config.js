@@ -52,9 +52,9 @@ module.exports = Object.seal({
 "borderHeight": 14142.135623730952,
 
 // [FOOD]
-"foodMinSize": 12,
-"foodMaxSize": 24,
-"foodAmount": 1500,
+"foodMinSize": 25,
+"foodMaxSize": 50,
+"foodAmount": 2000,
 "foodMassGrow": 1,
 
 // [VIRUSES]
@@ -81,12 +81,12 @@ module.exports = Object.seal({
 "playerMaxSize": 2000,
 "playerMinSplitSize": 59.16079783,
 "playerMinEjectSize": 59.16079783,
-"playerStartSize": 45,
+"playerStartSize": 80,
 "playerMaxCells": 32,
 "playerSpeed": 0.5,
-"playerDecayRate": 0.001,
+"playerDecayRate": 0.004,
 "playerDecayCap": 0,
-"playerRecombineTime": 4,
+"playerRecombineTime": 20,
 "playerMaxNickLength": 20,
 "playerDisconnectTime": -1,
 "splitVelocity": 880,
