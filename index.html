@@ -292,10 +292,9 @@
       sendTarget();
     });
 
-    // Płynne makro W / E
     function sendEject() {
       if (isAlive && isConnected) {
-        sendUint8(21); // Pakiet eject w protokole Ogara
+        sendUint8(21);
       }
     }
 
@@ -303,7 +302,7 @@
       if (isEjecting) return;
       isEjecting = true;
       sendEject();
-      ejectInterval = setInterval(sendEject, 35); // częstotliwość wystrzału makro
+      ejectInterval = setInterval(sendEject, 35);
     }
 
     function stopEjecting() {
@@ -317,7 +316,7 @@
     window.addEventListener("keydown", (e) => {
       if (!isAlive || !isConnected) return;
       if (e.code === "Space") {
-        sendUint8(17); // Pakiet split w protokole Ogara
+        sendUint8(17);
       } else if (e.code === "KeyW" || e.code === "KeyE") {
         startEjecting();
       }
@@ -344,7 +343,6 @@
       btnPlay.textContent = "CZEKAJ NA SERWER...";
       btnPlay.disabled = true;
 
-      // Czyszczenie stanu przy zmianie serwera
       nodes = {};
       myCellIds.clear();
       leaderboard = [];
@@ -365,7 +363,6 @@
         btnPlay.textContent = "GRAJ TERAZ";
         btnPlay.disabled = false;
 
-        // Protokół handshake Ogara
         const buf = new ArrayBuffer(5);
         const view = new DataView(buf);
         view.setUint8(0, 254);
@@ -404,7 +401,7 @@
 
     function switchMode(newUrl) {
       if (ws) {
-        ws.onclose = null; // wycisz automatyczne łączenie starego socketu
+        ws.onclose = null;
         ws.close();
       }
       stopEjecting();
@@ -432,15 +429,27 @@
       ws.send(buf);
     }
 
+    // Bezpieczny spawn w protokole 5 z kodowaniem UTF-8 i obsługą fallbacku
     function sendSpawn(nick) {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const buf = new ArrayBuffer(1 + nick.length * 2);
-      const view = new DataView(buf);
-      view.setUint8(0, 0);
-      for (let i = 0; i < nick.length; i++) {
-        view.setUint16(1 + i * 2, nick.charCodeAt(i), true);
+
+      try {
+        const encoder = new TextEncoder();
+        const nickBytes = encoder.encode(nick);
+        const buf = new Uint8Array(1 + nickBytes.length);
+        buf[0] = 0;
+        buf.set(nickBytes, 1);
+        ws.send(buf.buffer);
+      } catch (e) {
+        // Fallback dla starszych klientów
+        const buf = new ArrayBuffer(1 + nick.length * 2);
+        const view = new DataView(buf);
+        view.setUint8(0, 0);
+        for (let i = 0; i < nick.length; i++) {
+          view.setUint16(1 + i * 2, nick.charCodeAt(i), true);
+        }
+        ws.send(buf);
       }
-      ws.send(buf);
     }
 
     function handleServerMessage(view) {
@@ -672,11 +681,19 @@
     }
 
     btnPlay.addEventListener("click", () => {
-      const nick = document.getElementById("nick").value.trim() || "Gracz";
-      sendSpawn(nick);
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      const rawNick = document.getElementById("nick").value.trim() || "Gracz";
+      const rank = document.getElementById("rankSelect").value;
+
+      let finalNick = rawNick;
+      if (rank === "VIP") finalNick = `[VIP] ${rawNick}`;
+      else if (rank === "SVIP") finalNick = `[SVIP] ${rawNick}`;
+      else if (rank === "ADMIN") finalNick = `[ADMIN] ${rawNick}`;
+
+      sendSpawn(finalNick);
     });
 
-    // Inicjalizacja połączenia
     connect(document.getElementById("modeSelect").value);
     requestAnimationFrame(render);
   </script>
