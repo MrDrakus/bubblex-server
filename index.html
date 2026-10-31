@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>BubbleX.pl - Serwer MultiOgar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body, html {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #050608;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #fff;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 6, 8, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .modal-card {
+      background: #11141f;
+      width: 390px;
+      padding: 30px 28px 24px 28px;
+      border-radius: 20px;
+      border: 1px solid #23293d;
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 210, 255, 0.15);
+      text-align: center;
+    }
+
+    .brand-title {
+      font-size: 34px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+      text-align: left;
+    }
+    .brand-title span { color: #00d2ff; }
+
+    .brand-tagline {
+      font-size: 13px;
+      color: #7e8ea8;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+
+    .row-inputs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .input-nick {
+      flex: 1.4;
+      padding: 11px 14px;
+      background: #090b12;
+      border: 1px solid #23293d;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      color: #ffffff;
+    }
+    .input-nick:focus { border-color: #00d2ff; }
+
+    .select-mode {
+      flex: 1;
+      padding: 11px;
+      background: #090b12;
+      border: 1px solid #23293d;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .submodes {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .select-rank {
+      flex: 1;
+      padding: 7px 10px;
+      background: #090b12;
+      border: 1px solid #23293d;
+      border-radius: 6px;
+      color: #ffd700;
+      font-size: 12px;
+      font-weight: bold;
+      outline: none;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .btn-play {
+      flex: 1;
+      padding: 13px;
+      background: #00d2ff;
+      border: none;
+      border-radius: 8px;
+      color: #06080f;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-play:hover { background: #33dcff; }
+    .btn-play:disabled { background: #555; cursor: not-allowed; }
+
+    .controls-hint {
+      font-size: 12px;
+      color: #7e8ea8;
+      line-height: 1.6;
+      margin-bottom: 22px;
+      background: rgba(9, 11, 18, 0.7);
+      padding: 8px;
+      border-radius: 8px;
+    }
+    .controls-hint strong { color: #00d2ff; }
+
+    #server-status {
+      font-size: 12px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    .status-connecting { color: #ffd700; }
+    .status-connected { color: #00ff88; }
+    .status-error { color: #ff3344; }
+
+    #score-hud {
+      position: absolute;
+      top: 20px;
+      left: 25px;
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      display: none;
+      z-index: 10;
+    }
+
+    #leaderboard {
+      position: absolute;
+      top: 20px;
+      right: 25px;
+      background: rgba(17, 20, 31, 0.85);
+      border: 1px solid #23293d;
+      border-radius: 10px;
+      padding: 12px 16px;
+      width: 210px;
+      display: none;
+      z-index: 10;
+      font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    #leaderboard h3 {
+      font-size: 14px;
+      font-weight: 800;
+      color: #00d2ff;
+      text-align: center;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    #leaderboard ol {
+      list-style-position: inside;
+      padding: 0;
+      margin: 0;
+    }
+    #leaderboard li {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    #leaderboard li.me {
+      color: #00d2ff;
+      font-weight: 800;
+    }
+
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="overlay" id="menuOverlay">
+    <div class="modal-card">
+      <div class="brand-title">Bubble<span>X</span>.pl</div>
+      <div class="brand-tagline">Połączenie z serwerem MultiOgar</div>
+
+      <div id="server-status" class="status-connecting">Łączenie z serwerem ws://127.0.0.1:8080...</div>
+
+      <div class="row-inputs">
+        <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
+        <select class="select-rank" id="rankSelect">
+          <option value="PLAYER">Ranga: Gracz</option>
+          <option value="VIP">Ranga: [VIP]</option>
+          <option value="SVIP" selected>Ranga: [SVIP] 👑</option>
+          <option value="ADMIN">Ranga: [ADMIN] 🔥</option>
+        </select>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-play" id="btnPlay" disabled>CZEKAJ NA SERWER...</button>
+      </div>
+
+      <div class="controls-hint">
+        Myszka: <strong>Kierunek ruchu</strong><br>
+        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Wyrzut masy
+      </div>
+    </div>
+  </div>
+
+  <div id="score-hud">Masa: <span id="scoreVal">0</span></div>
+
+  <div id="leaderboard">
+    <h3>TOP 10</h3>
+    <ol id="lbList"></ol>
+  </div>
+
+  <canvas id="cvs"></canvas>
+
+  <script>
+    const cvs = document.getElementById("cvs");
+    const ctx = cvs.getContext("2d");
+
+    function resize() {
+      cvs.width = window.innerWidth;
+      cvs.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    let ws = null;
+    let isConnected = false;
+    let isAlive = false;
+
+    // Przechowalnia encji z serwera
+    const nodes = {};
+    const myCellIds = new Set();
+    let leaderboard = [];
+
+    // Pozycja widoku (kamery)
+    let viewX = 0;
+    let viewY = 0;
+    let viewZoom = 1.0;
+
+    // Pozycja kursora myszy
+    let mouseX = cvs.width / 2;
+    let mouseY = cvs.height / 2;
+
+    window.addEventListener("mousemove", (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      sendTarget();
+    });
+
+    // Sterowanie Spacją i W
+    window.addEventListener("keydown", (e) => {
+      if (!isAlive || !isConnected) return;
+      if (e.code === "Space") {
+        sendUint8(17); // Pakiet split w protokole Ogara
+      } else if (e.code === "KeyW") {
+        sendUint8(21); // Pakiet eject w protokole Ogara
+      }
+    });
+
+    const statusEl = document.getElementById("server-status");
+    const btnPlay = document.getElementById("btnPlay");
+
+    function connect() {
+      ws = new WebSocket("wss://bubblex-server.onrender.com");
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        isConnected = true;
+        statusEl.textContent = "Połączono z serwerem gry!";
+        statusEl.className = "status-connected";
+        btnPlay.textContent = "GRAJ TERAZ";
+        btnPlay.disabled = false;
+
+        // Protokół handshake Ogara (pakiet init)
+        const buf = new ArrayBuffer(5);
+        const view = new DataView(buf);
+        view.setUint8(0, 254);
+        view.setUint32(1, 5, true); // Wersja protokołu 5
+        ws.send(buf);
+
+        const buf2 = new ArrayBuffer(5);
+        const view2 = new DataView(buf2);
+        view2.setUint8(0, 255);
+        view2.setUint32(1, 0, true);
+        ws.send(buf2);
+      };
+
+      ws.onmessage = (e) => {
+        handleServerMessage(new DataView(e.data));
+      };
+
+      ws.onclose = () => {
+        isConnected = false;
+        isAlive = false;
+        statusEl.textContent = "Brak połączenia z serwerem. Uruchom serwer w konsoli!";
+        statusEl.className = "status-error";
+        btnPlay.textContent = "BRAK SERWERA";
+        btnPlay.disabled = true;
+        document.getElementById("menuOverlay").style.display = "flex";
+        document.getElementById("score-hud").style.display = "none";
+        document.getElementById("leaderboard").style.display = "none";
+        setTimeout(connect, 2000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    }
+
+    function sendUint8(val) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const buf = new ArrayBuffer(1);
+      new DataView(buf).setUint8(0, val);
+      ws.send(buf);
+    }
+
+    function sendTarget() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      // Konwersja współrzędnych ekranu do współrzędnych świata gry
+      const targetX = (mouseX - cvs.width / 2) / viewZoom + viewX;
+      const targetY = (mouseY - cvs.height / 2) / viewZoom + viewY;
+
+      const buf = new ArrayBuffer(13);
+      const view = new DataView(buf);
+      view.setUint8(0, 16);
+      view.setInt32(1, targetX, true);
+      view.setInt32(5, targetY, true);
+      view.setUint32(9, 0, true);
+      ws.send(buf);
+    }
+
+    function sendSpawn(nick) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const buf = new ArrayBuffer(1 + nick.length * 2);
+      const view = new DataView(buf);
+      view.setUint8(0, 0);
+      for (let i = 0; i < nick.length; i++) {
+        view.setUint16(1 + i * 2, nick.charCodeAt(i), true);
+      }
+      ws.send(buf);
+    }
+
+    // Obsługa pakietów binarnych z silnika MultiOgar
+    function handleServerMessage(view) {
+      let offset = 0;
+      const packetId = view.getUint8(offset++);
+
+      switch (packetId) {
+        // Pakiet 16: Aktualizacja stanu encji (kropek, kulek, wirusów)
+        case 16: {
+          const eatCount = view.getUint16(offset, true);
+          offset += 2;
+          for (let i = 0; i < eatCount; i++) {
+            offset += 8; // eaterId i victimId
+          }
+
+          // Aktualizacja / tworzenie encji
+          while (true) {
+            const id = view.getUint32(offset, true);
+            offset += 4;
+            if (id === 0) break;
+
+            const x = view.getInt32(offset, true);
+            offset += 4;
+            const y = view.getInt32(offset, true);
+            offset += 4;
+            const size = view.getInt16(offset, true);
+            offset += 2;
+
+            const r = view.getUint8(offset++);
+            const g = view.getUint8(offset++);
+            const b = view.getUint8(offset++);
+            const flags = view.getUint8(offset++);
+
+            const isVirus = !!(flags & 1);
+            if (flags & 2) offset += 4;
+            if (flags & 4) {
+              while (view.getUint8(offset++) !== 0) {}
+            }
+
+            let name = "";
+            while (true) {
+              const charCode = view.getUint16(offset, true);
+              offset += 2;
+              if (charCode === 0) break;
+              name += String.fromCharCode(charCode);
+            }
+
+            nodes[id] = {
+              id, x, y, size,
+              color: `rgb(${r},${g},${b})`,
+              isVirus,
+              name: name || (nodes[id] ? nodes[id].name : "")
+            };
+          }
+
+          // Usuwanie encji zjedzonych / znikających
+          const removeCount = view.getUint32(offset, true);
+          offset += 4;
+          for (let i = 0; i < removeCount; i++) {
+            const removeId = view.getUint32(offset, true);
+            offset += 4;
+            delete nodes[removeId];
+            myCellIds.delete(removeId);
+          }
+
+          if (isAlive && myCellIds.size === 0) {
+            // Gracz został całkowicie zjedzony
+            isAlive = false;
+            document.getElementById("menuOverlay").style.display = "flex";
+            document.getElementById("score-hud").style.display = "none";
+            document.getElementById("leaderboard").style.display = "none";
+          }
+          break;
+        }
+
+        // Pakiet 17: Ustawienie pozycji i przybliżenia kamery
+        case 17: {
+          viewX = view.getFloat32(offset, true);
+          offset += 4;
+          viewY = view.getFloat32(offset, true);
+          offset += 4;
+          viewZoom = view.getFloat32(offset, true);
+          break;
+        }
+
+        // Pakiet 32: Przypisanie ID do kulki gracza
+        case 32: {
+          const myId = view.getUint32(offset, true);
+          myCellIds.add(myId);
+          isAlive = true;
+          document.getElementById("menuOverlay").style.display = "none";
+          document.getElementById("score-hud").style.display = "block";
+          document.getElementById("leaderboard").style.display = "block";
+          break;
+        }
+
+        // Pakiet 49: Tablica wyników (Leaderboard FFA)
+        case 49: {
+          const count = view.getUint32(offset, true);
+          offset += 4;
+          leaderboard = [];
+          for (let i = 0; i < count; i++) {
+            const isMe = view.getUint32(offset, true);
+            offset += 4;
+            let name = "";
+            while (true) {
+              const charCode = view.getUint16(offset, true);
+              offset += 2;
+              if (charCode === 0) break;
+              name += String.fromCharCode(charCode);
+            }
+            leaderboard.push({ name: name || "Bezimienny", isMe: !!isMe });
+          }
+          updateLeaderboardDisplay();
+          break;
+        }
+      }
+    }
+
+    function updateLeaderboardDisplay() {
+      const lbList = document.getElementById("lbList");
+      lbList.innerHTML = "";
+      leaderboard.slice(0, 10).forEach((item, index) => {
+        const li = document.createElement("li");
+        if (item.isMe) li.className = "me";
+        li.innerHTML = `<span>${index + 1}. ${item.name}</span>`;
+        lbList.appendChild(li);
+      });
+    }
+
+    // Rysowanie ząbkowanego wirusa (kolca)
+    function drawVirus(x, y, r) {
+      const spikes = 22;
+      const step = (Math.PI * 2) / spikes;
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < spikes; i++) {
+        const radius = (i % 2 === 0) ? r + 6 : r - 4;
+        const angle = i * step;
+        const vx = x + Math.cos(angle) * radius;
+        const vy = y + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "#33e033";
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#1b8a1b";
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Główna pętla renderowania grafiki
+    function render() {
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+      ctx.save();
+      // Translacja kamery świata gry
+      ctx.translate(cvs.width / 2, cvs.height / 2);
+      ctx.scale(viewZoom, viewZoom);
+      ctx.translate(-viewX, -viewY);
+
+      // Siatka mapy
+      ctx.strokeStyle = "#141926";
+      ctx.lineWidth = 1;
+      const gridSize = 60;
+      const startX = Math.floor((viewX - cvs.width / (2 * viewZoom)) / gridSize) * gridSize;
+      const endX = Math.ceil((viewX + cvs.width / (2 * viewZoom)) / gridSize) * gridSize;
+      const startY = Math.floor((viewY - cvs.height / (2 * viewZoom)) / gridSize) * gridSize;
+      const endY = Math.ceil((viewY + cvs.height / (2 * viewZoom)) / gridSize) * gridSize;
+
+      ctx.beginPath();
+      for (let x = startX; x <= endX; x += gridSize) {
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+      }
+      for (let y = startY; y <= endY; y += gridSize) {
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
+      }
+      ctx.stroke();
+
+      let totalMass = 0;
+
+      // 1. Rysowanie jedzenia i zwykłych kulek
+      for (const id in nodes) {
+        const node = nodes[id];
+        if (node.isVirus) continue;
+
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+
+        if (node.size > 14) {
+          ctx.lineWidth = Math.max(2, node.size * 0.05);
+          ctx.strokeStyle = "rgba(0,0,0,0.15)";
+          ctx.stroke();
+        }
+
+        // Nick i masa na kulce
+        if (node.size >= 18) {
+          const mass = Math.round((node.size * node.size) / 100);
+          const fontSize = Math.max(10, Math.floor(node.size * 0.3));
+
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `bold ${fontSize}px Arial`;
+
+          if (node.name) {
+            ctx.fillText(node.name, node.x, node.y - fontSize * 0.3);
+            ctx.font = `bold ${Math.max(9, Math.floor(fontSize * 0.75))}px Arial`;
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.fillText(mass, node.x, node.y + fontSize * 0.6);
+          } else {
+            ctx.fillText(mass, node.x, node.y);
+          }
+        }
+
+        if (myCellIds.has(node.id)) {
+          totalMass += Math.round((node.size * node.size) / 100);
+        }
+      }
+
+      // 2. Rysowanie wirusów (kolców) na wierzchu małych kulek
+      for (const id in nodes) {
+        const node = nodes[id];
+        if (node.isVirus) {
+          drawVirus(node.x, node.y, node.size);
+        }
+      }
+
+      ctx.restore();
+
+      if (isAlive) {
+        document.getElementById("scoreVal").textContent = totalMass;
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    // Kliknięcie GRAJ TERAZ
+    btnPlay.addEventListener("click", () => {
+      const nick = document.getElementById("nick").value.trim() || "Gracz";
+      sendSpawn(nick);
+    });
+
+    // Start połączenia i renderera
+    connect();
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
