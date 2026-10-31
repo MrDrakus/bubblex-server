@@ -618,49 +618,77 @@
 
       let totalMass = 0;
 
-      // Sortowanie encji malejąco według rozmiaru, aby większe kulki rysowały się pierwsze pod spodem
-      const sortedNodes = Object.values(nodes).sort((a, b) => b.size - a.size);
+      // Sortowanie wszystkich encji od najmniejszej do największej (rosnąco)
+      // Dzięki temu mniejsza kulka rysuje się PIERWSZA (jest pod spodem), 
+      // a większy wirus lub gracz rysuje się NA NIEJ.
+      const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
 
-      // Rysowanie komórek graczy i jedzenia
-      for (const node of sortedNodes) {
-        if (node.isVirus) continue;
-
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
-        ctx.fillStyle = node.color;
-        ctx.fill();
-
-        if (node.size > 14) {
-          ctx.lineWidth = Math.max(2, node.size * 0.05);
-          ctx.strokeStyle = "rgba(0,0,0,0.15)";
-          ctx.stroke();
-        }
-
-        if (node.size >= 18) {
-          const mass = Math.round((node.size * node.size) / 100);
-          const fontSize = Math.max(10, Math.floor(node.size * 0.3));
-
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "#ffffff";
-          ctx.font = `bold ${fontSize}px Arial`;
-
-          if (node.name) {
-            ctx.fillText(node.name, node.x, node.y - fontSize * 0.3);
-            ctx.font = `bold ${Math.max(9, Math.floor(fontSize * 0.75))}px Arial`;
-            ctx.fillStyle = "rgba(255,255,255,0.85)";
-            ctx.fillText(mass, node.x, node.y + fontSize * 0.6);
-          } else {
-            ctx.fillText(mass, node.x, node.y);
-          }
-        }
-
-        if (myCellIds.has(node.id)) {
-          totalMass += Math.round((node.size * node.size) / 100);
-        }
-      }
-
-      // Rysowanie wirusów według posortowanej wielkości
       for (const node of sortedNodes) {
         if (node.isVirus) {
           drawVirus(node.x, node.y, node.size);
+        } else {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+          ctx.fillStyle = node.color;
+          ctx.fill();
+
+          if (node.size > 14) {
+            ctx.lineWidth = Math.max(2, node.size * 0.05);
+            ctx.strokeStyle = "rgba(0,0,0,0.15)";
+            ctx.stroke();
+          }
+
+          if (node.size >= 18) {
+            const mass = Math.round((node.size * node.size) / 100);
+            const fontSize = Math.max(10, Math.floor(node.size * 0.3));
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            ctx.font = `bold ${fontSize}px Arial`;
+
+            if (node.name) {
+              ctx.fillText(node.name, node.x, node.y - fontSize * 0.3);
+              ctx.font = `bold ${Math.max(9, Math.floor(fontSize * 0.75))}px Arial`;
+              ctx.fillStyle = "rgba(255,255,255,0.85)";
+              ctx.fillText(mass, node.x, node.y + fontSize * 0.6);
+            } else {
+              ctx.fillText(mass, node.x, node.y);
+            }
+          }
+
+          if (myCellIds.has(node.id)) {
+            totalMass += Math.round((node.size * node.size) / 100);
+          }
+        }
+      }
+
+      ctx.restore();
+
+      if (isAlive) {
+        document.getElementById("scoreVal").textContent = totalMass;
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    btnPlay.addEventListener("click", () => {
+      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      const inputVal = document.getElementById("nick").value.trim();
+      const rawNick = inputVal.length > 0 ? inputVal : "Gracz";
+      const rank = document.getElementById("rankSelect").value;
+
+      let finalNick = rawNick;
+      if (rank === "VIP") finalNick = `[VIP] ${rawNick}`;
+      else if (rank === "SVIP") finalNick = `[SVIP] ${rawNick}`;
+      else if (rank === "ADMIN") finalNick = `[ADMIN] ${rawNick}`;
+
+      sendSpawn(finalNick);
+    });
+
+    connect(document.getElementById("modeSelect").value);
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
