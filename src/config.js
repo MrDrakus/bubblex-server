@@ -17,7 +17,7 @@ module.exports = Object.seal({
 "serverPort": 8080,
 "serverBind": "0.0.0.0",
 "serverTracker": 0,
-"serverGamemode": 2,
+"serverGamemode": 0,
 "serverBots": 10,
 "serverViewBaseX": 1920,
 "serverViewBaseY": 1080,
