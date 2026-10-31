@@ -74,7 +74,7 @@ module.exports = Object.seal({
 "ejectCooldown": 0,
 "ejectSpawnPercent": 0,
 "ejectVirus": 0,
-"ejectVelocity": 860,
+"ejectVelocity": 900,
 
 // [PLAYERS] - Dynamiczny split i fast-merge
 "playerMinSize": 31.6227766017,
@@ -82,14 +82,14 @@ module.exports = Object.seal({
 "playerMinSplitSize": 59.16079783,
 "playerMinEjectSize": 59.16079783,
 "playerStartSize": 45,
-"playerMaxCells": 32,
+"playerMaxCells": 64,
 "playerSpeed": 0.5,
 "playerDecayRate": 0.001,
 "playerDecayCap": 0,
-"playerRecombineTime": 4,
+"playerRecombineTime": 0,
 "playerMaxNickLength": 20,
 "playerDisconnectTime": -1,
-"splitVelocity": 880,
+"splitVelocity": 950,
 
 // [MINIONS]
 "minionStartSize": 31.6227766017,
