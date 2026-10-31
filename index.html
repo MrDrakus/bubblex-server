@@ -429,7 +429,6 @@
       ws.send(buf);
     }
 
-    // Kodowanie UTF-16LE z terminatorem null zapobiegające chińskim znakom
     function sendSpawn(nick) {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
@@ -597,6 +596,7 @@
       ctx.scale(viewZoom, viewZoom);
       ctx.translate(-viewX, -viewY);
 
+      // Siatka tła
       ctx.strokeStyle = "#141926";
       ctx.lineWidth = 1;
       const gridSize = 60;
@@ -618,8 +618,11 @@
 
       let totalMass = 0;
 
-      for (const id in nodes) {
-        const node = nodes[id];
+      // Sortowanie encji malejąco według rozmiaru, aby większe kulki rysowały się pierwsze pod spodem
+      const sortedNodes = Object.values(nodes).sort((a, b) => b.size - a.size);
+
+      // Rysowanie komórek graczy i jedzenia
+      for (const node of sortedNodes) {
         if (node.isVirus) continue;
 
         ctx.beginPath();
@@ -657,39 +660,7 @@
         }
       }
 
-      for (const id in nodes) {
-        const node = nodes[id];
+      // Rysowanie wirusów według posortowanej wielkości
+      for (const node of sortedNodes) {
         if (node.isVirus) {
           drawVirus(node.x, node.y, node.size);
-        }
-      }
-
-      ctx.restore();
-
-      if (isAlive) {
-        document.getElementById("scoreVal").textContent = totalMass;
-      }
-
-      requestAnimationFrame(render);
-    }
-
-    btnPlay.addEventListener("click", () => {
-      if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-      const inputVal = document.getElementById("nick").value.trim();
-      const rawNick = inputVal.length > 0 ? inputVal : "Gracz";
-      const rank = document.getElementById("rankSelect").value;
-
-      let finalNick = rawNick;
-      if (rank === "VIP") finalNick = `[VIP] ${rawNick}`;
-      else if (rank === "SVIP") finalNick = `[SVIP] ${rawNick}`;
-      else if (rank === "ADMIN") finalNick = `[ADMIN] ${rawNick}`;
-
-      sendSpawn(finalNick);
-    });
-
-    connect(document.getElementById("modeSelect").value);
-    requestAnimationFrame(render);
-  </script>
-</body>
-</html>
