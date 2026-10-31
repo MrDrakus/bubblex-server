@@ -25,7 +25,7 @@
 
     .modal-card {
       background: #11141f;
-      width: 390px;
+      width: 400px;
       padding: 30px 28px 24px 28px;
       border-radius: 20px;
       border: 1px solid #23293d;
@@ -66,35 +66,45 @@
     }
     .input-nick:focus { border-color: #00d2ff; }
 
-    .select-mode {
+    .select-rank {
       flex: 1;
-      padding: 11px;
+      padding: 11px 10px;
+      background: #090b12;
+      border: 1px solid #23293d;
+      border-radius: 8px;
+      color: #ffd700;
+      font-size: 12px;
+      font-weight: bold;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .mode-container {
+      margin-bottom: 14px;
+      text-align: left;
+    }
+    .mode-label {
+      display: block;
+      font-size: 11px;
+      color: #7e8ea8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+    .select-mode {
+      width: 100%;
+      padding: 11px 12px;
       background: #090b12;
       border: 1px solid #23293d;
       border-radius: 8px;
       font-size: 13px;
       outline: none;
-      color: #ffffff;
+      color: #00d2ff;
+      font-weight: 600;
       cursor: pointer;
     }
-
-    .submodes {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-    .select-rank {
-      flex: 1;
-      padding: 7px 10px;
-      background: #090b12;
-      border: 1px solid #23293d;
-      border-radius: 6px;
-      color: #ffd700;
-      font-size: 12px;
-      font-weight: bold;
-      outline: none;
-    }
+    .select-mode:focus { border-color: #00d2ff; }
 
     .action-row {
       display: flex;
@@ -120,16 +130,16 @@
       font-size: 12px;
       color: #7e8ea8;
       line-height: 1.6;
-      margin-bottom: 22px;
+      margin-bottom: 16px;
       background: rgba(9, 11, 18, 0.7);
-      padding: 8px;
+      padding: 10px;
       border-radius: 8px;
     }
     .controls-hint strong { color: #00d2ff; }
 
     #server-status {
       font-size: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       font-weight: bold;
     }
     .status-connecting { color: #ffd700; }
@@ -197,9 +207,19 @@
   <div class="overlay" id="menuOverlay">
     <div class="modal-card">
       <div class="brand-title">Bubble<span>X</span>.pl</div>
-      <div class="brand-tagline">Połączenie z serwerem MultiOgar</div>
+      <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <div id="server-status" class="status-connecting">Łączenie z serwerem ws://127.0.0.1:8080...</div>
+      <div id="server-status" class="status-connecting">Łączenie z serwerem gry...</div>
+
+      <div class="mode-container">
+        <span class="mode-label">Tryb rozgrywki</span>
+        <select class="select-mode" id="modeSelect" onchange="switchMode(this.value)">
+          <option value="wss://bubblex-server.onrender.com">Tryb FFA (Standard)</option>
+          <option value="wss://bubblex-megasplit.onrender.com">MegaSplit (Instant Merge / 64 Kulek)</option>
+          <option value="wss://bubblex-hardcore.onrender.com">Hardcore (Większa Masa / Walka)</option>
+          <option value="wss://bubblex-experimental.onrender.com">Experimental (Wirusy-Matki)</option>
+        </select>
+      </div>
 
       <div class="row-inputs">
         <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
@@ -217,7 +237,7 @@
 
       <div class="controls-hint">
         Myszka: <strong>Kierunek ruchu</strong><br>
-        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Wyrzut masy
+        <strong>Spacja</strong>: Podział masy | <strong>W / E</strong>: Ciągły wyrzut masy (Makro)
       </div>
     </div>
   </div>
@@ -245,10 +265,16 @@
     let ws = null;
     let isConnected = false;
     let isAlive = false;
+    let reconnectTimeout = null;
+    let currentServerUrl = "wss://bubblex-server.onrender.com";
+
+    // Obsługa makro pod W / E
+    let ejectInterval = null;
+    let isEjecting = false;
 
     // Przechowalnia encji z serwera
-    const nodes = {};
-    const myCellIds = new Set();
+    let nodes = {};
+    let myCellIds = new Set();
     let leaderboard = [];
 
     // Pozycja widoku (kamery)
@@ -266,22 +292,71 @@
       sendTarget();
     });
 
-    // Sterowanie Spacją i W
+    // Płynne makro W / E
+    function sendEject() {
+      if (isAlive && isConnected) {
+        sendUint8(21); // Pakiet eject w protokole Ogara
+      }
+    }
+
+    function startEjecting() {
+      if (isEjecting) return;
+      isEjecting = true;
+      sendEject();
+      ejectInterval = setInterval(sendEject, 35); // częstotliwość wystrzału makro
+    }
+
+    function stopEjecting() {
+      isEjecting = false;
+      if (ejectInterval) {
+        clearInterval(ejectInterval);
+        ejectInterval = null;
+      }
+    }
+
     window.addEventListener("keydown", (e) => {
       if (!isAlive || !isConnected) return;
       if (e.code === "Space") {
         sendUint8(17); // Pakiet split w protokole Ogara
-      } else if (e.code === "KeyW") {
-        sendUint8(21); // Pakiet eject w protokole Ogara
+      } else if (e.code === "KeyW" || e.code === "KeyE") {
+        startEjecting();
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.code === "KeyW" || e.code === "KeyE") {
+        stopEjecting();
       }
     });
 
     const statusEl = document.getElementById("server-status");
     const btnPlay = document.getElementById("btnPlay");
 
-    function connect() {
-      ws = new WebSocket("wss://bubblex-server.onrender.com");
-      ws.binaryType = "arraybuffer";
+    function connect(serverUrl) {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+
+      currentServerUrl = serverUrl || currentServerUrl;
+      statusEl.textContent = "Łączenie z serwerem...";
+      statusEl.className = "status-connecting";
+      btnPlay.textContent = "CZEKAJ NA SERWER...";
+      btnPlay.disabled = true;
+
+      // Czyszczenie stanu przy zmianie serwera
+      nodes = {};
+      myCellIds.clear();
+      leaderboard = [];
+
+      try {
+        ws = new WebSocket(currentServerUrl);
+        ws.binaryType = "arraybuffer";
+      } catch (err) {
+        statusEl.textContent = "Błąd adresu serwera!";
+        statusEl.className = "status-error";
+        return;
+      }
 
       ws.onopen = () => {
         isConnected = true;
@@ -290,11 +365,11 @@
         btnPlay.textContent = "GRAJ TERAZ";
         btnPlay.disabled = false;
 
-        // Protokół handshake Ogara (pakiet init)
+        // Protokół handshake Ogara
         const buf = new ArrayBuffer(5);
         const view = new DataView(buf);
         view.setUint8(0, 254);
-        view.setUint32(1, 5, true); // Wersja protokołu 5
+        view.setUint32(1, 5, true);
         ws.send(buf);
 
         const buf2 = new ArrayBuffer(5);
@@ -311,19 +386,29 @@
       ws.onclose = () => {
         isConnected = false;
         isAlive = false;
-        statusEl.textContent = "Brak połączenia z serwerem. Uruchom serwer w konsoli!";
+        stopEjecting();
+        statusEl.textContent = "Brak połączenia. Wybudzanie serwera w chmurze...";
         statusEl.className = "status-error";
         btnPlay.textContent = "BRAK SERWERA";
         btnPlay.disabled = true;
         document.getElementById("menuOverlay").style.display = "flex";
         document.getElementById("score-hud").style.display = "none";
         document.getElementById("leaderboard").style.display = "none";
-        setTimeout(connect, 2000);
+        reconnectTimeout = setTimeout(() => connect(currentServerUrl), 2500);
       };
 
       ws.onerror = () => {
-        ws.close();
+        if (ws) ws.close();
       };
+    }
+
+    function switchMode(newUrl) {
+      if (ws) {
+        ws.onclose = null; // wycisz automatyczne łączenie starego socketu
+        ws.close();
+      }
+      stopEjecting();
+      connect(newUrl);
     }
 
     function sendUint8(val) {
@@ -335,7 +420,6 @@
 
     function sendTarget() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      // Konwersja współrzędnych ekranu do współrzędnych świata gry
       const targetX = (mouseX - cvs.width / 2) / viewZoom + viewX;
       const targetY = (mouseY - cvs.height / 2) / viewZoom + viewY;
 
@@ -359,21 +443,18 @@
       ws.send(buf);
     }
 
-    // Obsługa pakietów binarnych z silnika MultiOgar
     function handleServerMessage(view) {
       let offset = 0;
       const packetId = view.getUint8(offset++);
 
       switch (packetId) {
-        // Pakiet 16: Aktualizacja stanu encji (kropek, kulek, wirusów)
         case 16: {
           const eatCount = view.getUint16(offset, true);
           offset += 2;
           for (let i = 0; i < eatCount; i++) {
-            offset += 8; // eaterId i victimId
+            offset += 8;
           }
 
-          // Aktualizacja / tworzenie encji
           while (true) {
             const id = view.getUint32(offset, true);
             offset += 4;
@@ -413,7 +494,6 @@
             };
           }
 
-          // Usuwanie encji zjedzonych / znikających
           const removeCount = view.getUint32(offset, true);
           offset += 4;
           for (let i = 0; i < removeCount; i++) {
@@ -424,8 +504,8 @@
           }
 
           if (isAlive && myCellIds.size === 0) {
-            // Gracz został całkowicie zjedzony
             isAlive = false;
+            stopEjecting();
             document.getElementById("menuOverlay").style.display = "flex";
             document.getElementById("score-hud").style.display = "none";
             document.getElementById("leaderboard").style.display = "none";
@@ -433,7 +513,6 @@
           break;
         }
 
-        // Pakiet 17: Ustawienie pozycji i przybliżenia kamery
         case 17: {
           viewX = view.getFloat32(offset, true);
           offset += 4;
@@ -443,7 +522,6 @@
           break;
         }
 
-        // Pakiet 32: Przypisanie ID do kulki gracza
         case 32: {
           const myId = view.getUint32(offset, true);
           myCellIds.add(myId);
@@ -454,7 +532,6 @@
           break;
         }
 
-        // Pakiet 49: Tablica wyników (Leaderboard FFA)
         case 49: {
           const count = view.getUint32(offset, true);
           offset += 4;
@@ -488,7 +565,6 @@
       });
     }
 
-    // Rysowanie ząbkowanego wirusa (kolca)
     function drawVirus(x, y, r) {
       const spikes = 22;
       const step = (Math.PI * 2) / spikes;
@@ -511,17 +587,14 @@
       ctx.restore();
     }
 
-    // Główna pętla renderowania grafiki
     function render() {
       ctx.clearRect(0, 0, cvs.width, cvs.height);
 
       ctx.save();
-      // Translacja kamery świata gry
       ctx.translate(cvs.width / 2, cvs.height / 2);
       ctx.scale(viewZoom, viewZoom);
       ctx.translate(-viewX, -viewY);
 
-      // Siatka mapy
       ctx.strokeStyle = "#141926";
       ctx.lineWidth = 1;
       const gridSize = 60;
@@ -543,7 +616,6 @@
 
       let totalMass = 0;
 
-      // 1. Rysowanie jedzenia i zwykłych kulek
       for (const id in nodes) {
         const node = nodes[id];
         if (node.isVirus) continue;
@@ -559,7 +631,6 @@
           ctx.stroke();
         }
 
-        // Nick i masa na kulce
         if (node.size >= 18) {
           const mass = Math.round((node.size * node.size) / 100);
           const fontSize = Math.max(10, Math.floor(node.size * 0.3));
@@ -584,7 +655,6 @@
         }
       }
 
-      // 2. Rysowanie wirusów (kolców) na wierzchu małych kulek
       for (const id in nodes) {
         const node = nodes[id];
         if (node.isVirus) {
@@ -601,14 +671,13 @@
       requestAnimationFrame(render);
     }
 
-    // Kliknięcie GRAJ TERAZ
     btnPlay.addEventListener("click", () => {
       const nick = document.getElementById("nick").value.trim() || "Gracz";
       sendSpawn(nick);
     });
 
-    // Start połączenia i renderera
-    connect();
+    // Inicjalizacja połączenia
+    connect(document.getElementById("modeSelect").value);
     requestAnimationFrame(render);
   </script>
 </body>
