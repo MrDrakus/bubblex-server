@@ -62,6 +62,11 @@ class Server {
         this.badWords = [];
         this.loadFiles();
 
+        // Obsluga dynamicznego portu Rendera dla MegaSplit
+        if (process.env.PORT) {
+            this.config.serverPort = parseInt(process.env.PORT);
+        }
+
         // Set border, quad-tree
         this.setBorder(this.config.borderWidth, this.config.borderHeight);
         this.quadTree = new QuadNode(this.border);
@@ -86,7 +91,6 @@ class Server {
             this.httpServer = http.createServer();
         }
 
-        //this.httpServer = http.createServer();
         var wsOptions = {
             server: this.httpServer,
             perMessageDeflate: false,
@@ -108,7 +112,7 @@ class Server {
         // Done
         Logger.info("Game server started, on port " + this.config.serverPort);
         Logger.info("Current game mode is " + this.mode.name);
-        // Player bots (Experimental)
+        // Player bots
         if (this.config.serverBots) {
             for (var i = 0; i < this.config.serverBots; i++)
                 this.bots.addBot();
@@ -116,7 +120,6 @@ class Server {
         }
     }
     addNode(node) {
-        // Add to quad-tree & node list
         var x = node.position.x;
         var y = node.position.y;
         var s = node.radius;
@@ -126,7 +129,6 @@ class Server {
         };
         this.quadTree.insert(node.quadItem);
         this.nodes.push(node);
-        // Special on-add actions
         node.onAdd(this);
     }
     onServerSocketError(error) {
@@ -134,13 +136,12 @@ class Server {
         switch (error.code) {
             case "EADDRINUSE":
                 Logger.error("Server could not bind to port " + this.config.serverPort + "!");
-                Logger.error("Please close out of Skype or change 'serverPort' in the config to a different number.");
                 break;
             case "EACCES":
                 Logger.error("Please make sure you are running MultiOgarII with root privileges.");
                 break;
         }
-        process.exit(1); // Exits the program
+        process.exit(1);
     }
     onClientSocketOpen(ws, req) {
         var req = req || ws.upgradeReq;
@@ -169,7 +170,7 @@ class Server {
                 return;
             }
         }
-        if (this.config.clientBind.length && req.headers.origin.indexOf(this.clientBind) < 0) {
+        if (this.config.clientBind.length && req.headers.origin && req.headers.origin.indexOf(this.clientBind) < 0) {
             ws.close(1000, "Client not allowed");
             return;
         }
@@ -177,13 +178,12 @@ class Server {
         ws.remoteAddress = ws._socket.remoteAddress;
         ws.remotePort = ws._socket.remotePort;
         ws.lastAliveTime = Date.now();
-        Logger.write("CONNECTED " + ws.remoteAddress + ":" + ws.remotePort + ", origin: \"" + req.headers.origin + "\"");
+        Logger.write("CONNECTED " + ws.remoteAddress + ":" + ws.remotePort);
         ws.player = new Player(this, ws);
         ws.client = new Client(this, ws);
         ws.playerCommand = new PlayerCommand(this, ws.player);
         ws.on('message', message => {
             if (this.config.serverWsModule === "uws")
-                // uws gives ArrayBuffer - convert it to Buffer
                 message = Buffer.from(message);
             if (!message.length) return;
             if (message.length > 256) {
@@ -207,56 +207,25 @@ class Server {
                 message: ws._closeMessage
             };
             ws.closeTime = Date.now();
-            Logger.write("DISCONNECTED " + ws.remoteAddress + ":" + ws.remotePort + ", code: " + ws._closeCode +
-                ", reason: \"" + ws._closeMessage + "\", name: \"" + ws.player._name + "\"");
+            Logger.write("DISCONNECTED " + ws.remoteAddress + ":" + ws.remotePort);
         });
         this.socketCount++;
         this.clients.push(ws);
-        // Check for external minions
         this.checkMinion(ws, req);
     }
+
+    // Blokada restartu zabezpieczajaca przed petla w chmurze
     restart() {
-        if (this.run) {
-            this.run = false;
-            this.sendChatMessage(null, null, "Server restarting...");
-            setTimeout(this.restart.bind(this), 3000);
-            return;
-        }
-        this.httpServer = null;
-        this.wsServer = null;
-        this.run = true;
-        this.lastNodeId = 1;
-        this.lastPlayerId = 1;
-        for (const client of this.clients) client.close();
-        this.nodes = [];
-        this.nodesVirus = [];
-        this.nodesFood = [];
-        this.nodesEjected = [];
-        this.nodesPlayer = [];
-        this.movingNodes = [];
-        if (this.config.serverBots) {
-            for (var i = 0; i < this.config.serverBots; i++)
-                this.bots.addBot();
-            Logger.info(`Added ${this.config.serverBots} player bots`);
-        }
-        this.commands;
-        this.ticks = 0;
-        const now = new Date();
-        this.startTime = now.getTime();
-        this.setBorder(this.config.borderWidth, this.config.borderHeight);
-        this.quadTree = new QuadNode(this.border, 64, 32);
-        this.spawnCells(this.config.virusAmount, this.config.foodAmount);
-        const date = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`
-        const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-        Logger.info(`Restarted ${date} ${time}`);
+        Logger.warn("Auto-restart zablokowany: serwer MegaSplit dziala stale.");
+        return;
     }
+
     checkMinion(ws, req) {
-        // Check headers (maybe have a config for this?)
+        if (!req || !req.headers) return;
         if (!req.headers['user-agent'] || !req.headers['cache-control'] ||
             req.headers['user-agent'].length < 50) {
             ws.player.isMinion = true;
         }
-        // External minion detection
         if (this.config.serverMinionThreshold) {
             if ((ws.lastAliveTime - this.startTime) / 1000 >= this.config.serverMinionIgnoreTime) {
                 if (this.minionTest.length >= this.config.serverMinionThreshold) {
@@ -273,7 +242,6 @@ class Server {
                 this.minionTest.push(ws.player);
             }
         }
-        // Add server minions if needed
         if (this.config.serverMinions && !ws.player.isMinion) {
             for (var i = 0; i < this.config.serverMinions; i++) {
                 this.bots.addMinion(ws.player);
@@ -289,7 +257,6 @@ class Server {
         }
         var ipBin = ipAddress.split('.');
         if (ipBin.length != 4) {
-            // unknown IP format
             return false;
         }
         var subNet2 = ipBin[0] + "." + ipBin[1] + ".*.*";
@@ -310,12 +277,10 @@ class Server {
         this.border.height = height;
     }
     getRandomColor() {
-        // get random
         var colorRGB = [0xFF, 0x07, (Math.random() * 256) >> 0];
         colorRGB.sort(function () {
             return 0.5 - Math.random();
         });
-        // return random
         return {
             r: colorRGB[0],
             g: colorRGB[1],
@@ -323,31 +288,24 @@ class Server {
         };
     }
     removeNode(node) {
-        // Remove from quad-tree
         node.isRemoved = true;
         this.quadTree.remove(node.quadItem);
         node.quadItem = null;
-        // Remove from node lists
         this.nodes.removeUnsorted(node);
         this.movingNodes.removeUnsorted(node);
-        // Special on-remove actions
         node.onRemove(this);
     }
     updateClients() {
-        // check dead clients
         for (var i = 0; i < this.clients.length; ++i) {
             const client = this.clients[i];
             client.player.checkConnection();
-            // remove dead client
             if (client.player.isRemoved || client.isCloseRequest) {
                 this.clients.removeUnsorted(null, i);
                 --i;
             }
         }
-        // update
         for (const client of this.clients) client.player.updateTick();
         for (const client of this.clients) client.player.sendUpdate();
-        // check minions
         for (let i = 0; i < this.minionTest.length; ++i) {
             const minionTest = this.minionTest[i];
             if (!minionTest) continue;
@@ -359,14 +317,11 @@ class Server {
         }
     }
     updateLeaderboard() {
-        // Update leaderboard with the gamemode's method
         this.leaderboard = [];
         this.leaderboardType = -1;
         this.mode.updateLB(this, this.leaderboard);
         if (!this.mode.specByLeaderboard) {
-            // Get client with largest score if gamemode doesn't have a leaderboard
             var clients = this.clients.valueOf();
-            // Use sort function
             clients.sort(function (a, b) {
                 return b.player._score - a.player._score;
             });
@@ -382,11 +337,9 @@ class Server {
         if (!message || !(message = message.trim()))
             return;
         if (!this.config.serverChat || (from && from.isMuted)) {
-            // chat is disabled or player is muted
             return;
         }
         if (from && message.length && message[0] == '/') {
-            // player command
             from.socket.playerCommand.processMessage(from, message);
             return;
         }
@@ -420,7 +373,6 @@ class Server {
                 continue;
             if (!to || to == this.clients[i].player) {
                 if (this.config.separateChatForTeams && this.mode.haveTeams) {
-                    //  from equals null if message from server
                     if (from == null || from.team === this.clients[i].player.team) {
                         this.clients[i].client.sendPacket(new Packet.ChatMessage(from, message));
                     }
@@ -432,7 +384,7 @@ class Server {
         }
     }
     timerLoop() {
-        var timeStep = 20; // vanilla: 40
+        var timeStep = 20;
         var ts = Date.now();
         var dt = ts - this.timeStamp;
         if (dt < timeStep - 5) {
@@ -441,7 +393,6 @@ class Server {
         }
         if (dt > 120)
             this.timeStamp = ts - timeStep;
-        // update average, calculate next
         this.updateTimeAvg += 0.5 * (this.updateTime - this.updateTimeAvg);
         this.timeStamp += timeStep;
         setTimeout(this.mainLoopBind, 0);
@@ -450,13 +401,11 @@ class Server {
     mainLoop() {
         this.stepDateTime = Date.now();
         var tStart = process.hrtime();
-        if (this.ticks > this.config.serverRestart && this.run) this.restart();
+        
         // Loop main functions
         if (this.run) {
-            // Move moving nodes first
             for (const cell of this.movingNodes) {
                 if (cell.isRemoved || !cell.isMoving) continue;
-                // Scan and check for ejected mass / virus collisions
                 this.boostCell(cell);
                 const nodes = this.quadTree.allOverlapped(cell.quadItem.bound);
                 for (const check of nodes) {
@@ -466,14 +415,11 @@ class Server {
                     else this.resolveCollision(m);
                 }
             }
-            // Update players and scan for collisions
             var eatCollisions = [];
-            // Decay player cells once per second
             if (((this.ticks + 3) % 25) === 0)
                 for (const cell of this.nodesPlayer) this.updateSizeDecay(cell);
             for (const cell of this.nodesPlayer) {
                 if (cell.isRemoved) continue;
-                // Scan for eat/rigid collisions and resolve them
                 const nodes = this.quadTree.allOverlapped(cell.quadItem.bound);
                 for (const check of nodes) {
                     const m = this.checkCellCollision(cell, check);
@@ -484,7 +430,6 @@ class Server {
                 this.movePlayer(cell, cell.owner);
                 this.boostCell(cell);
                 this.autoSplit(cell, cell.owner);
-                // Remove external minions if necessary
                 if (cell.owner.isMinion) {
                     cell.owner.socket.close(1000, "Minion");
                     this.removeNode(cell);
@@ -495,41 +440,31 @@ class Server {
             this.ticks++;
         }
         this.updateClients();
-        // update leaderboard
         if (((this.ticks + 7) % 25) === 0)
-            this.updateLeaderboard(); // once per second
-        // ping server tracker
+            this.updateLeaderboard();
         if (this.config.serverTracker && (this.ticks % 750) === 0)
-            this.pingServerTracker(); // once per 30 seconds
-        // update-update time
+            this.pingServerTracker();
         var tEnd = process.hrtime(tStart);
         this.updateTime = tEnd[0] * 1e3 + tEnd[1] / 1e6;
     }
-    // update remerge first
     movePlayer(cell, client) {
         if (client.socket.isConnected == false || client.frozen || !client.mouse)
-            return; // Do not move
-        // get movement from vector
+            return;
         var d = client.mouse.difference(cell.position);
-        var move = cell.getSpeed(d.dist()); // movement speed
-        if (!move) return; // avoid jittering
+        var move = cell.getSpeed(d.dist());
+        if (!move) return;
         cell.position.add(d.product(move));
-        // update remerge
         var time = this.config.playerRecombineTime, base = Math.max(time, cell.radius * 0.2) * 25;
-        // instant merging conditions
         if (!time || client.rec || client.mergeOverride) {
             cell._canRemerge = cell.boostDistance < 100;
-            return; // instant merge
+            return;
         }
-        // regular remerge time
         cell._canRemerge = cell.getAge() >= base;
     }
-    // decay player cells
     updateSizeDecay(cell) {
         var rate = this.config.playerDecayRate, cap = this.config.playerDecayCap;
         if (!rate || cell.radius <= this.config.playerMinSize)
             return;
-        // remove size from cell at decay rate
         if (cap && cell._mass > cap)
             rate *= 10;
         var decay = 1 - rate * this.mode.decayMod;
@@ -541,35 +476,28 @@ class Server {
             cell.isMoving = false;
             return;
         }
-        // decay boost-speed from distance
-        var speed = cell.boostDistance / 9; // val: 87
-        cell.boostDistance -= speed; // decays from speed
+        var speed = cell.boostDistance / 9;
+        cell.boostDistance -= speed;
         cell.position.add(cell.boostDirection.product(speed));
-        // update boundries
         cell.checkBorder(this.border);
         this.updateNodeQuad(cell);
     }
     autoSplit(cell, client) {
-        // get size limit based off of rec mode
         if (client.rec)
-            var maxSize = 1e9; // increase limit for rec (1 bil)
+            var maxSize = 1e9;
         else
             maxSize = this.config.playerMaxSize;
-        // check size limit
         if (client.mergeOverride || cell.radius < maxSize)
             return;
         if (client.cells.length >= this.config.playerMaxCells || this.config.mobilePhysics) {
-            // cannot split => just limit
             cell.setSize(maxSize);
         }
         else {
-            // split in random direction
             var angle = Math.random() * 2 * Math.PI;
             this.splitPlayerCell(client, cell, angle, cell._mass * .5);
         }
     }
     updateNodeQuad(node) {
-        // update quad tree
         var item = node.quadItem.bound;
         item.minx = node.position.x - node.radius;
         item.miny = node.position.y - node.radius;
@@ -578,49 +506,39 @@ class Server {
         this.quadTree.remove(node.quadItem);
         this.quadTree.insert(node.quadItem);
     }
-    // Checks cells for collision
     checkCellCollision(cell, check) {
         const p = check.position.difference(cell.position);
-        // create collision manifold
         return {
             cell: cell,
             check: check,
             d: p.dist(),
-            p: p // check - cell position
+            p: p
         };
     }
-    // Checks if collision is rigid body collision
     checkRigidCollision(m) {
         if (!m.cell.owner || !m.check.owner) return false;
         if (m.cell.owner != m.check.owner) {
-            // Minions don't collide with their team when the config value is 0
             if (this.mode.haveTeams && m.check.owner.isMi || m.cell.owner.isMi && this.config.minionCollideTeam === 0) {
                 return false;
             } else {
-                // Different owners => same team
                 return this.mode.haveTeams &&
                     m.cell.owner.team == m.check.owner.team;
             }
         }
         const age = this.config.mobilePhysics ? 1 : 13;
-        // just split => ignore
         if (m.cell.getAge() < age || m.check.getAge() < age) return false;
         return !m.cell._canRemerge || !m.check._canRemerge;
     }
-    // Resolves rigid body collisions
     resolveRigidCollision(m) {
         if (m.d == 0) return;
         var push = (m.cell.radius + m.check.radius - m.d) / m.d;
-        if (push <= 0) return; // do not extrude
-        // body impulse
+        if (push <= 0) return;
         const massSum = m.cell._radius2 + m.check._radius2;
         const r1 = push * m.cell._radius2 / massSum;
         const r2 = push * m.check._radius2 / massSum;
-        // apply extrusion force
         m.cell.position.subtract(m.p.product(r2));
         m.check.position.add(m.p.product(r1));
     }
-    // Resolves non-rigid body collision
     resolveCollision(m) {
         let cell = m.cell;
         let check = m.check;
@@ -629,32 +547,25 @@ class Server {
             cell = m.check;
             check = m.cell;
         }
-        // check eating distance
         const div = this.config.mobilePhysics ? 20 : 3;
-        if (m.d >= check.radius - cell.radius / div) return; // too far => can't eat
-        // collision owned => ignore, resolve, or remerge
+        if (m.d >= check.radius - cell.radius / div) return;
         if (cell.owner && cell.owner == check.owner) {
             if (cell.getAge() < 13 || check.getAge() < 13)
-                return; // just split => ignore
+                return;
         }
         else if (check.radius < cell.radius * 1.15 || !check.canEat(cell))
-            return; // Cannot eat or cell refuses to be eaten
-        // Consume effect
+            return;
         check.onEat(cell);
         cell.onEaten(check);
         cell.killer = check;
-        // Remove cell
         this.removeNode(cell);
     }
     splitPlayerCell(client, parent, angle, mass) {
         var size = Math.sqrt(mass * 100);
         var size1 = Math.sqrt(parent._radius2 - size * size);
-        // Too small to split
         if (!size1 || size1 < this.config.playerMinSize)
             return;
-        // Remove size from parent cell
         parent.setSize(size1);
-        // Create cell and add it to node list
         var newCell = new Entity.PlayerCell(this, client, parent.position, size);
         newCell.setBoost(this.config.splitVelocity * Math.pow(size, 0.0122), angle);
         this.addNode(newCell);
@@ -665,7 +576,6 @@ class Server {
     }
     safeSpawn(cell) {
         const maxAttempts = 10;
-
         var spawnSuccess = false;
         var attempts = 0;
         while (!spawnSuccess && attempts < maxAttempts) {
@@ -691,7 +601,6 @@ class Server {
     spawnVirus() {
         var virus = new Entity.Virus(this, null, this.randomPos(), this.config.virusMinSize);
         this.safeSpawn(virus);
-
     }
     spawnCells(virusCount, foodCount) {
         for (var i = 0; i < foodCount; i++) {
@@ -703,25 +612,20 @@ class Server {
     }
     spawnPlayer(player, pos) {
         if (this.disableSpawn)
-            return; // Not allowed to spawn!
-        // Check for special starting size
+            return;
         var size = this.config.playerStartSize;
         if (player.spawnmass)
             size = player.spawnmass;
-        // Check if can spawn from ejected mass
         var index = ~~(this.nodesEjected.length * Math.random());
-        var eject = this.nodesEjected[index]; // Randomly selected
+        var eject = this.nodesEjected[index];
         if (Math.random() <= this.config.ejectSpawnPercent &&
             eject && eject.boostDistance < 1) {
-            // Spawn from ejected mass
             pos = eject.position.clone();
             player.color = eject.color;
             size = Math.max(size, eject.radius * 1.15);
         }
-        // Spawn player safely (do not check minions)
         var cell = new Entity.PlayerCell(this, player, pos, size);
         player.isMi ? this.addNode(cell) : this.safeSpawn(cell);
-        // Set initial mouse coords
         player.mouse.assign(pos);
     }
     willCollide(cell) {
@@ -732,29 +636,25 @@ class Server {
         return this.quadTree.find(bound, n => n.type == 0);
     }
     splitCells(client) {
-        // Split cell order decided by cell age
         var cellToSplit = [];
         for (var i = 0; i < client.cells.length; i++)
             cellToSplit.push(client.cells[i]);
-        // Split split-able cells
         for (const cell of cellToSplit) {
             var d = client.mouse.difference(cell.position);
             if (d.distSquared() < 1) d.x = 1, d.y = 0;
             if (cell.radius < this.config.playerMinSplitSize) continue;
-            // Get maximum cells for rec mode
             const max = client.rec ? 200 : this.config.playerMaxCells;
             if (client.cells.length >= max) continue;
-            // Now split player cells
             this.splitPlayerCell(client, cell, d.angle(), cell._mass * .5);
         }
     }
     canEjectMass(client) {
-        if (client.lastEject === null) { // first eject
+        if (client.lastEject === null) {
             client.lastEject = this.ticks;
             return true;
         }
         if (this.ticks - client.lastEject < this.config.ejectCooldown)
-            return false; // reject (cooldown)
+            return false;
         client.lastEject = this.ticks;
         return true;
     }
@@ -767,7 +667,7 @@ class Server {
             var newSize = cell._radius2 - loss * loss;
             var minSize = this.config.playerMinSize;
             if (newSize < 0 || newSize < minSize * minSize)
-                continue; // Too small to eject
+                continue;
             cell.setSize(Math.sqrt(newSize));
 
             var d = client.mouse.difference(cell.position);
@@ -775,10 +675,8 @@ class Server {
             d.x = sq > 1 ? d.x / sq : 1;
             d.y = sq > 1 ? d.y / sq : 0;
 
-            // Get starting position
             var pos = cell.position.sum(d.product(cell.radius));
             var angle = d.angle() + (Math.random() * .6) - .3;
-            // Create cell and add it to node list
             var ejected;
             if (this.config.ejectVirus) {
                 ejected = new Entity.Virus(this, null, pos, this.config.ejectSize);
@@ -791,16 +689,12 @@ class Server {
         }
     }
     shootVirus(parent, angle) {
-        // Create virus and add it to node list
         var pos = parent.position.clone();
         var newVirus = new Entity.Virus(this, null, pos, this.config.virusMinSize);
         newVirus.setBoost(this.config.virusVelocity, angle);
         this.addNode(newVirus);
     }
     loadFiles() {
-        //Logger.setVerbosity(this.config.logVerbosity);
-        //Logger.setFileVerbosity(this.config.logFileVerbosity);
-        // Load bad words
         var fileNameBadWords = this.srcFiles + '/badwords.txt';
         try {
             if (!fs.existsSync(fileNameBadWords)) {
@@ -810,7 +704,7 @@ class Server {
                 var words = fs.readFileSync(fileNameBadWords, 'utf-8');
                 words = words.split(/[\r\n]+/);
                 words = words.map(function (arg) {
-                    return " " + arg.trim().toLowerCase() + " "; // Formatting
+                    return " " + arg.trim().toLowerCase() + " ";
                 });
                 words = words.filter(function (arg) {
                     return arg.length > 2;
@@ -823,7 +717,6 @@ class Server {
             Logger.error(err.stack);
             Logger.error("Failed to load " + fileNameBadWords + ": " + err.message);
         }
-        // Load user list
         var fileNameUsers = this.srcFiles + '/enum/userRoles.json';
         try {
             this.userList = [];
@@ -864,27 +757,22 @@ class Server {
             Logger.error(err.stack);
             Logger.error("Failed to load " + fileNameUsers + ": " + err.message);
         }
-        // Load ip ban list
         var fileNameIpBan = this.srcFiles + '/ipbanlist.txt';
         try {
             if (fs.existsSync(fileNameIpBan)) {
-                // Load and input the contents of the ipbanlist file
                 this.ipBanList = fs.readFileSync(fileNameIpBan, "utf8")
                     .split(/[\r\n]+/)
-                    .filter(x => x != ''); // filter empty lines
+                    .filter(x => x != '');
                 Logger.info(this.ipBanList.length + " IP ban records loaded.");
             } else Logger.warn(fileNameIpBan + " is missing.");
         } catch (err) {
             Logger.error(err.stack);
             Logger.error("Failed to load " + fileNameIpBan + ": " + err.message);
         }
-        // Convert config settings
         this.config.serverRestart = this.config.serverRestart === 0 ? 1e999 : this.config.serverRestart * 1500;
     }
     startStatsServer(port) {
-        // Create stats
         this.getStats();
-        // Show stats
         this.httpServer = http.createServer(function (req, res) {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.writeHead(200);
@@ -895,13 +783,11 @@ class Server {
         });
         var getStatsBind = this.getStats.bind(this);
         this.httpServer.listen(port, function () {
-            // Stats server
             Logger.info("Started stats server on port " + port);
             setInterval(getStatsBind, this.config.serverStatsUpdate * 1000);
         }.bind(this));
     }
     getStats() {
-        // Get server statistics
         let alivePlayers = 0;
         let spectatePlayers = 0;
         let bots = 0;
@@ -933,10 +819,7 @@ class Server {
         this.statsObj = s;
         this.stats = JSON.stringify(s);
     }
-    // Pings the server tracker, should be called every 30 seconds
-    // To list us on the server tracker located at http://ogar.mivabe.nl/master
     pingServerTracker() {
-        // Get server statistics
         if (!os) os = require('os');
         var totalPlayers = 0;
         var alivePlayers = 0;
@@ -957,17 +840,16 @@ class Server {
                     spectatePlayers++;
             }
         }
-        // ogar.mivabe.nl/master
         var data = 'current_players=' + totalPlayers +
             '&alive=' + alivePlayers +
             '&spectators=' + spectatePlayers +
             '&max_players=' + this.config.serverMaxConnections +
             '&sport=' + this.config.serverPort +
-            '&gamemode=[**] ' + this.mode.name + // we add [**] to indicate that this is MultiOgarII server
-            '&agario=true' + // protocol version
-            '&name=Unnamed Server' + // we cannot use it, because other value will be used as dns name
-            '&opp=' + os.platform() + ' ' + os.arch() + // "win32 x64"
-            '&uptime=' + process.uptime() + // Number of seconds server has been running
+            '&gamemode=[**] ' + this.mode.name +
+            '&agario=true' +
+            '&name=Unnamed Server' +
+            '&opp=' + os.platform() + ' ' + os.arch() +
+            '&uptime=' + process.uptime() +
             '&version=MultiOgarII ' + this.version +
             '&start_time=' + this.startTime;
         trackerRequest({
