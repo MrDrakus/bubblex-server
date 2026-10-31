@@ -83,7 +83,7 @@ module.exports = Object.seal({
 "playerMinEjectSize": 59.16079783,
 "playerStartSize": 45,
 "playerMaxCells": 32,
-"playerSpeed": 1.4,
+"playerSpeed": 0.5,
 "playerDecayRate": 0.001,
 "playerDecayCap": 0,
 "playerRecombineTime": 4,
