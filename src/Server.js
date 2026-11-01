@@ -648,8 +648,17 @@ class Server {
             if (cell.getAge() < 13 || check.getAge() < 13)
                 return; // just split => ignore
         }
-        else if (check.radius < cell.radius * 1.15 || !check.canEat(cell))
-            return; // Cannot eat or cell refuses to be eaten
+        else {
+            // At the maximum number of cells, a player cell may eat a virus
+            // when it is at least as large as the virus. At fewer cells,
+            // keep the usual 15% size advantage requirement.
+            const virusCellLimit = this.config.virusMaxCells || this.config.playerMaxCells;
+            const fullSplitVirus = check.type === 0 && cell.type === 2 &&
+                check.owner && check.owner.cells.length >= virusCellLimit;
+            const requiredSizeRatio = fullSplitVirus ? 1.0 : 1.15;
+            if (check.radius < cell.radius * requiredSizeRatio || !check.canEat(cell))
+                return; // Cannot eat or cell refuses to be eaten
+        }
         // Consume effect
         check.onEat(cell);
         cell.onEaten(check);
