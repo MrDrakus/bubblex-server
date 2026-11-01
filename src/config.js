@@ -54,7 +54,7 @@ module.exports = Object.seal({
 // [FOOD]
 "foodMinSize": 12,
 "foodMaxSize": 24,
-"foodAmount": 1200,
+"foodAmount": 1400,
 "foodMassGrow": 1,
 
 // [VIRUSES]
