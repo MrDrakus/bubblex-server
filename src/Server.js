@@ -515,7 +515,7 @@ class Server {
         if (!move) return; // avoid jittering
         cell.position.add(d.product(move));
         // update remerge
-        var time = this.config.playerRecombineTime, base = Math.max(time, cell.radius * 0.2) * 25;
+        var time = this.config.playerRecombineTime, base = Math.max(time, cell.radius * 0.2) * 50;
         // instant merging conditions
         if (!time || client.rec || client.mergeOverride) {
             cell._canRemerge = cell.boostDistance < 100;
