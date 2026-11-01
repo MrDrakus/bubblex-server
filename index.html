@@ -667,8 +667,13 @@
       for (const node of sortedNodes) {
         // Interpoluj ruch obiektow w kazdej klatce zamiast rysowac je
         // tylko w pozycjach z ostatniego pakietu sieciowego.
-        node.renderX += (node.x - node.renderX) * moveSmooth;
-        node.renderY += (node.y - node.renderY) * moveSmooth;
+        // Kulki gracza szybciej reaguja na ruch myszy (80 ms zamiast 120 ms).
+        // Pozostale kulki oraz kamera zachowuja dotychczasowe wygładzanie.
+        const nodeMoveSmooth = myCellIds.has(node.id)
+          ? 1 - Math.exp(-deltaMs / 80)
+          : moveSmooth;
+        node.renderX += (node.x - node.renderX) * nodeMoveSmooth;
+        node.renderY += (node.y - node.renderY) * nodeMoveSmooth;
         node.renderSize += (node.size - node.renderSize) * (1 - Math.exp(-deltaMs / 90));
         const drawX = node.renderX;
         const drawY = node.renderY;
