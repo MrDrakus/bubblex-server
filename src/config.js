@@ -87,7 +87,7 @@ module.exports = Object.seal({
 "playerSpeed": 0.5,
 "playerDecayRate": 0.001,
 "playerDecayCap": 0,
-"playerRecombineTime": 21,
+"playerRecombineTime": 18,
 "playerMaxNickLength": 20,
 "playerDisconnectTime": -1,
 "splitVelocity": 880,
