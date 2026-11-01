@@ -199,11 +199,12 @@
       font-weight: 800;
     }
 
-    /* Czat gry – lewy dolny róg, nad planszą. */
+    /* Czat gry – lewa krawędź, pionowo na środku ekranu. */
     #game-chat {
       position: absolute;
       left: 24px;
-      bottom: 24px;
+      top: 50%;
+      transform: translateY(-50%);
       width: min(340px, calc(100vw - 48px));
       display: none;
       flex-direction: column;
@@ -564,9 +565,17 @@
     }
 
     function sendTarget() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const targetX = (mouseX - cvs.width / 2) / viewZoom + viewX;
-      const targetY = (mouseY - cvs.height / 2) / viewZoom + viewY;
+      if (!isAlive || !isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      // Kierunek myszy liczony względem AKTUALNEJ pozycji kamery z serwera.
+      // Nie używamy wygładzonej pozycji (viewX/viewY), bo jej opóźnienie
+      // powodowałoby nieprecyzyjne sterowanie przy płynnej kamerze.
+      const cameraX = cameraReady ? targetViewX : viewX;
+      const cameraY = cameraReady ? targetViewY : viewY;
+      const cameraZoom = cameraReady ? targetViewZoom : viewZoom;
+      if (!Number.isFinite(cameraZoom) || cameraZoom <= 0) return;
+      const targetX = cameraX + (mouseX - cvs.width / 2) / cameraZoom;
+      const targetY = cameraY + (mouseY - cvs.height / 2) / cameraZoom;
 
       const buf = new ArrayBuffer(13);
       const view = new DataView(buf);
@@ -576,6 +585,11 @@
       view.setUint32(9, 0, true);
       ws.send(buf);
     }
+
+    // Ponawiaj cel ruchu, nawet jeśli kursor myszy pozostaje nieruchomy.
+    // Ponieważ kamera przesuwa się razem z graczem, cel w świecie gry
+    // również musi się przesuwać. Inaczej kulka dociera do starego punktu i staje.
+    setInterval(sendTarget, 50);
 
     function sendSpawn(nick) {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -777,7 +791,7 @@
       lastCameraFrame = frameTime;
 
       // Wspolne tempo wygładzania ruchu kamery i kulek.
-      const moveSmooth = 1 - Math.exp(-deltaMs / 120);
+      const moveSmooth = 1 - Math.exp(-deltaMs / 95);
       if (cameraReady) {
         const zoomSmooth = 1 - Math.exp(-deltaMs / 220);
         viewX += (targetViewX - viewX) * moveSmooth;
@@ -822,11 +836,11 @@
       for (const node of sortedNodes) {
         // Interpoluj ruch obiektow w kazdej klatce zamiast rysowac je
         // tylko w pozycjach z ostatniego pakietu sieciowego.
-        // Kulki gracza szybciej reaguja na ruch myszy (80 ms zamiast 120 ms).
-        // Pozostale kulki oraz kamera zachowuja dotychczasowe wygładzanie.
+        // Szybsza reakcja własnych kulek bez rezygnowania z wygładzania.
+        // Pozostałe obiekty pozostają wygładzane łagodniej.
         const nodeMoveSmooth = myCellIds.has(node.id)
-          ? 1 - Math.exp(-deltaMs / 80)
-          : moveSmooth;
+          ? 1 - Math.exp(-deltaMs / 50)
+          : 1 - Math.exp(-deltaMs / 120);
         node.renderX += (node.x - node.renderX) * nodeMoveSmooth;
         node.renderY += (node.y - node.renderY) * nodeMoveSmooth;
         node.renderSize += (node.size - node.renderSize) * (1 - Math.exp(-deltaMs / 90));
