@@ -237,7 +237,7 @@
 
       <div class="controls-hint">
         Myszka: <strong>Kierunek ruchu</strong><br>
-        <strong>Spacja</strong>: Podział masy | <strong>W / E</strong>: Ciągły wyrzut masy (Makro)
+        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Jeden wyrzut | <strong>E</strong>: Makro (wolniej)
       </div>
     </div>
   </div>
@@ -302,7 +302,7 @@
       if (isEjecting) return;
       isEjecting = true;
       sendEject();
-      ejectInterval = setInterval(sendEject, 35);
+      ejectInterval = setInterval(sendEject, 70);
     }
 
     function stopEjecting() {
@@ -317,16 +317,21 @@
       if (!isAlive || !isConnected) return;
       if (e.code === "Space") {
         sendUint8(17);
-      } else if (e.code === "KeyW" || e.code === "KeyE") {
-        startEjecting();
+      } else if (e.code === "KeyW") {
+        if (!e.repeat) sendEject(); // Jeden wyrzut na naciśnięcie W
+      } else if (e.code === "KeyE") {
+        startEjecting(); // Ciągły wyrzut przy trzymaniu E
       }
     });
 
     window.addEventListener("keyup", (e) => {
-      if (e.code === "KeyW" || e.code === "KeyE") {
+      if (e.code === "KeyE") {
         stopEjecting();
       }
     });
+
+    // Zatrzymaj makro E po przejściu do innej karty lub okna.
+    window.addEventListener("blur", stopEjecting);
 
     const statusEl = document.getElementById("server-status");
     const btnPlay = document.getElementById("btnPlay");
