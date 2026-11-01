@@ -1,3 +1,4 @@
+
 module.exports = Object.seal({
 // MultiOgarII configurations file
 // Lines starting with // are comments
@@ -54,7 +55,7 @@ module.exports = Object.seal({
 // [FOOD]
 "foodMinSize": 12,
 "foodMaxSize": 24,
-"foodAmount": 1500,
+"foodAmount": 1050,
 "foodMassGrow": 1,
 
 // [VIRUSES]
