@@ -721,12 +721,6 @@
       sendSpawn(finalNick);
     });
 
-    // Utrzymuj kierunek ruchu zgodny z pozycją kursora także podczas animacji kamery.
-    // Co 50 ms aktualizuj cel, nawet jeśli mysz pozostaje nieruchoma.
-    setInterval(() => {
-      if (isAlive && isConnected && cameraReady) sendTarget();
-    }, 50);
-
     connect(document.getElementById("modeSelect").value);
     requestAnimationFrame(render);
   </script>
