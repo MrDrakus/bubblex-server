@@ -499,11 +499,17 @@
               name += String.fromCharCode(charCode);
             }
 
+            // Zachowaj wyswietlana pozycje pomiedzy aktualizacjami serwera.
+            // Bez tego kulki przeskakuja skokowo, gdy kamera jest plynna.
+            const previousNode = nodes[id];
             nodes[id] = {
               id, x, y, size,
+              renderX: previousNode ? previousNode.renderX : x,
+              renderY: previousNode ? previousNode.renderY : y,
+              renderSize: previousNode ? previousNode.renderSize : size,
               color: `rgb(${r},${g},${b})`,
               isVirus,
-              name: name || (nodes[id] ? nodes[id].name : "")
+              name: name || (previousNode ? previousNode.name : "")
             };
           }
 
@@ -615,8 +621,9 @@
         : Math.min(Math.max(frameTime - lastCameraFrame, 0), 50);
       lastCameraFrame = frameTime;
 
+      // Wspolne tempo wygładzania ruchu kamery i kulek.
+      const moveSmooth = 1 - Math.exp(-deltaMs / 120);
       if (cameraReady) {
-        const moveSmooth = 1 - Math.exp(-deltaMs / 120);
         const zoomSmooth = 1 - Math.exp(-deltaMs / 220);
         viewX += (targetViewX - viewX) * moveSmooth;
         viewY += (targetViewY - viewY) * moveSmooth;
@@ -658,23 +665,32 @@
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
 
       for (const node of sortedNodes) {
+        // Interpoluj ruch obiektow w kazdej klatce zamiast rysowac je
+        // tylko w pozycjach z ostatniego pakietu sieciowego.
+        node.renderX += (node.x - node.renderX) * moveSmooth;
+        node.renderY += (node.y - node.renderY) * moveSmooth;
+        node.renderSize += (node.size - node.renderSize) * (1 - Math.exp(-deltaMs / 90));
+        const drawX = node.renderX;
+        const drawY = node.renderY;
+        const drawSize = node.renderSize;
+
         if (node.isVirus) {
-          drawVirus(node.x, node.y, node.size);
+          drawVirus(drawX, drawY, drawSize);
         } else {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+          ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
           ctx.fillStyle = node.color;
           ctx.fill();
 
           if (node.size > 14) {
-            ctx.lineWidth = Math.max(2, node.size * 0.05);
+            ctx.lineWidth = Math.max(2, drawSize * 0.05);
             ctx.strokeStyle = "rgba(0,0,0,0.15)";
             ctx.stroke();
           }
 
           if (node.size >= 18) {
             const mass = Math.round((node.size * node.size) / 100);
-            const fontSize = Math.max(10, Math.floor(node.size * 0.3));
+            const fontSize = Math.max(10, Math.floor(drawSize * 0.3));
 
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -682,12 +698,12 @@
             ctx.font = `bold ${fontSize}px Arial`;
 
             if (node.name) {
-              ctx.fillText(node.name, node.x, node.y - fontSize * 0.3);
+              ctx.fillText(node.name, drawX, drawY - fontSize * 0.3);
               ctx.font = `bold ${Math.max(9, Math.floor(fontSize * 0.75))}px Arial`;
               ctx.fillStyle = "rgba(255,255,255,0.85)";
-              ctx.fillText(mass, node.x, node.y + fontSize * 0.6);
+              ctx.fillText(mass, drawX, drawY + fontSize * 0.6);
             } else {
-              ctx.fillText(mass, node.x, node.y);
+              ctx.fillText(mass, drawX, drawY);
             }
           }
 
