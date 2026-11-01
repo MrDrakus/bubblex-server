@@ -529,9 +529,14 @@ class Server {
         var rate = this.config.playerDecayRate, cap = this.config.playerDecayCap;
         if (!rate || cell.radius <= this.config.playerMinSize)
             return;
-        // Smaller cells keep their original decay rate.
-        // Above 1000 mass, gradually reduce decay up to 50% at 10000 mass.
-        if (cell._mass > 1000) {
+        // Make small cells lose mass more visibly without changing large-cell decay.
+        // Up to 500 mass: 3x the original rate. From 500 to 1000: ease down to 1x.
+        if (cell._mass <= 500) {
+            rate *= 3;
+        } else if (cell._mass < 1000) {
+            rate *= 1 + 2 * (1000 - cell._mass) / 500;
+        } else {
+            // Above 1000 mass, gradually reduce decay up to 50% at 10000 mass.
             const progress = Math.min(1, (cell._mass - 1000) / 9000);
             rate *= 1 - progress * 0.5;
         }
