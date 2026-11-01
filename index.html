@@ -277,10 +277,15 @@
     let myCellIds = new Set();
     let leaderboard = [];
 
-    // Pozycja widoku (kamery)
+    // Płynna kamera: aktualny widok i docelowa pozycja/zoom z serwera.
     let viewX = 0;
     let viewY = 0;
     let viewZoom = 1.0;
+    let targetViewX = 0;
+    let targetViewY = 0;
+    let targetViewZoom = 1.0;
+    let cameraReady = false;
+    let lastCameraFrame = null;
 
     // Pozycja kursora myszy
     let mouseX = cvs.width / 2;
@@ -343,6 +348,8 @@
       }
 
       currentServerUrl = serverUrl || currentServerUrl;
+      cameraReady = false; // Po zmianie serwera ustaw kamerę od razu przy pierwszym pakiecie.
+      lastCameraFrame = null;
       statusEl.textContent = "Łączenie z serwerem...";
       statusEl.className = "status-connecting";
       btnPlay.textContent = "CZEKAJ NA SERWER...";
@@ -520,11 +527,19 @@
         }
 
         case 17: {
-          viewX = view.getFloat32(offset, true);
+          targetViewX = view.getFloat32(offset, true);
           offset += 4;
-          viewY = view.getFloat32(offset, true);
+          targetViewY = view.getFloat32(offset, true);
           offset += 4;
-          viewZoom = view.getFloat32(offset, true) / 1.32;
+          targetViewZoom = view.getFloat32(offset, true) / 1.32;
+
+          // Pierwszy pakiet: bez animacji z (0, 0) do gracza.
+          if (!cameraReady) {
+            viewX = targetViewX;
+            viewY = targetViewY;
+            viewZoom = targetViewZoom;
+            cameraReady = true;
+          }
           break;
         }
 
@@ -593,7 +608,21 @@
       ctx.restore();
     }
 
-    function render() {
+    function render(frameTime) {
+      // Animacja niezależna od FPS: kamera łagodnie podąża za serwerem.
+      const deltaMs = lastCameraFrame === null
+        ? 16.67
+        : Math.min(Math.max(frameTime - lastCameraFrame, 0), 50);
+      lastCameraFrame = frameTime;
+
+      if (cameraReady) {
+        const moveSmooth = 1 - Math.exp(-deltaMs / 120);
+        const zoomSmooth = 1 - Math.exp(-deltaMs / 220);
+        viewX += (targetViewX - viewX) * moveSmooth;
+        viewY += (targetViewY - viewY) * moveSmooth;
+        viewZoom += (targetViewZoom - viewZoom) * zoomSmooth;
+      }
+
       ctx.clearRect(0, 0, cvs.width, cvs.height);
 
       ctx.save();
