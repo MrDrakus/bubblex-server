@@ -1,4 +1,3 @@
-
 module.exports = Object.seal({
 // MultiOgarII configurations file
 // Lines starting with // are comments
@@ -55,7 +54,7 @@ module.exports = Object.seal({
 // [FOOD]
 "foodMinSize": 12,
 "foodMaxSize": 24,
-"foodAmount": 1050,
+"foodAmount": 1200,
 "foodMassGrow": 1,
 
 // [VIRUSES]
@@ -83,7 +82,7 @@ module.exports = Object.seal({
 "playerMinSplitSize": 59.16079783,
 "playerMinEjectSize": 59.16079783,
 "playerStartSize": 45,
-"playerMaxCells": 32,
+"playerMaxCells": 16,
 "playerSpeed": 0.5,
 "playerDecayRate": 0.001,
 "playerDecayCap": 0,
