@@ -148,9 +148,9 @@
 
     #score-hud {
       position: absolute;
-      top: 20px;
+      top: 277px; /* Pod minimapą, żeby HUD się nie nakładał. */
       left: 25px;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
       color: #ffffff;
       font-family: Arial, sans-serif;
@@ -244,6 +244,58 @@
     }
     #chat-input::placeholder { color: #94a3b8; }
 
+    /* Minimapa: caly obszar mapy w lewym gornym rogu. */
+    #minimap-hud {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      width: 214px;
+      padding: 10px;
+      border: 1px solid #344960;
+      border-radius: 12px;
+      background: rgba(7, 12, 22, 0.88);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+      display: none;
+      z-index: 11;
+      pointer-events: none;
+    }
+    #minimap-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+      color: #d9e9f5;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+    }
+    #minimap-canvas {
+      width: 192px;
+      height: 192px;
+      display: block;
+      border: 1px solid #3b506b;
+      border-radius: 4px;
+      background: #0a111d;
+    }
+    #minimap-legend {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 7px;
+      color: #a5b7cb;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    #minimap-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .map-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .map-dot.you { background: #00d2ff; }
+    .map-dot.virus { background: #42ec67; }
+
+    @media (max-height: 680px) {
+      #minimap-hud { top: 9px; left: 12px; width: 182px; padding: 8px; }
+      #minimap-canvas { width: 164px; height: 164px; }
+      #score-hud { top: 236px; left: 15px; font-size: 16px; }
+    }
+
     canvas { display: block; }
   </style>
 </head>
@@ -288,6 +340,15 @@
     </div>
   </div>
 
+  <div id="minimap-hud" aria-label="Minimapa gry">
+    <div id="minimap-title"><span>MINIMAPA</span><span>BUBBLEX</span></div>
+    <canvas id="minimap-canvas" width="192" height="192" aria-label="Mapa z Twoją pozycją i widocznymi wirusami"></canvas>
+    <div id="minimap-legend">
+      <span><i class="map-dot you"></i> Ty</span>
+      <span><i class="map-dot virus"></i> Wirusy w zasięgu</span>
+    </div>
+  </div>
+
   <div id="score-hud">Masa: <span id="scoreVal">0</span></div>
 
   <div id="leaderboard">
@@ -314,6 +375,17 @@
     }
     resize();
     window.addEventListener("resize", resize);
+
+    // Minimapa ma stale granice calej mapy, nie tylko aktualny widok kamery.
+    // Ustawienia awaryjne odpowiadaja obecnemu config.js (14142 x 14142).
+    const minimapHud = document.getElementById("minimap-hud");
+    const minimapCanvas = document.getElementById("minimap-canvas");
+    const minimapCtx = minimapCanvas.getContext("2d");
+    const defaultMapBorder = Object.freeze({
+      minX: -7071.067811865476, minY: -7071.067811865476,
+      maxX: 7071.067811865476, maxY: 7071.067811865476
+    });
+    let mapBorder = { ...defaultMapBorder };
 
     let ws = null;
     let isConnected = false;
@@ -480,6 +552,8 @@
       }
 
       currentServerUrl = serverUrl || currentServerUrl;
+      mapBorder = { ...defaultMapBorder }; // Reset, gdy gracz zmienia tryb.
+      minimapHud.style.display = "none";
       closeChat();
       chatPanel.style.display = "none";
       chatMessages.replaceChildren(); // Nie mieszaj czatów różnych trybów gry.
@@ -533,6 +607,7 @@
         stopEjecting();
         closeChat();
         chatPanel.style.display = "none";
+        minimapHud.style.display = "none";
         statusEl.textContent = "Brak połączenia. Wybudzanie serwera w chmurze...";
         statusEl.className = "status-error";
         btnPlay.textContent = "BRAK SERWERA";
@@ -677,6 +752,7 @@
             stopEjecting();
             closeChat();
             chatPanel.style.display = "none";
+            minimapHud.style.display = "none";
             document.getElementById("menuOverlay").style.display = "flex";
             document.getElementById("score-hud").style.display = "none";
             document.getElementById("leaderboard").style.display = "none";
@@ -709,6 +785,22 @@
           document.getElementById("score-hud").style.display = "block";
           document.getElementById("leaderboard").style.display = "block";
           chatPanel.style.display = "flex";
+          minimapHud.style.display = "block";
+          break;
+        }
+
+        case 64: {
+          // Standardowy pakiet MultiOgarII: granice mapy jako 4 liczby Float64.
+          // Pozwala dostosowac minimape do innych rozmiarow map w trybach gry.
+          if (view.byteLength - offset < 32) break;
+          const minX = view.getFloat64(offset, true);
+          const minY = view.getFloat64(offset + 8, true);
+          const maxX = view.getFloat64(offset + 16, true);
+          const maxY = view.getFloat64(offset + 24, true);
+          if ([minX, minY, maxX, maxY].every(Number.isFinite) &&
+              maxX > minX && maxY > minY) {
+            mapBorder = { minX, minY, maxX, maxY };
+          }
           break;
         }
 
@@ -781,6 +873,84 @@
       ctx.strokeStyle = "#1b8a1b";
       ctx.stroke();
       ctx.restore();
+    }
+
+    function drawMinimap() {
+      if (!isAlive || !minimapCtx) return;
+
+      const mw = minimapCanvas.width;
+      const mh = minimapCanvas.height;
+      const padding = 8;
+      const mapW = mapBorder.maxX - mapBorder.minX;
+      const mapH = mapBorder.maxY - mapBorder.minY;
+      if (!(mapW > 0 && mapH > 0)) return;
+
+      // Zachowaj proporcje nawet przy prostokatnej mapie.
+      const scale = Math.min((mw - 2 * padding) / mapW, (mh - 2 * padding) / mapH);
+      const plotW = mapW * scale;
+      const plotH = mapH * scale;
+      const left = (mw - plotW) / 2;
+      const top = (mh - plotH) / 2;
+      const coordX = x => left + (x - mapBorder.minX) * scale;
+      const coordY = y => top + (y - mapBorder.minY) * scale;
+
+      minimapCtx.clearRect(0, 0, mw, mh);
+      minimapCtx.fillStyle = "#09111d";
+      minimapCtx.fillRect(0, 0, mw, mh);
+      minimapCtx.fillStyle = "#111f31";
+      minimapCtx.fillRect(left, top, plotW, plotH);
+      minimapCtx.strokeStyle = "rgba(125, 151, 183, 0.16)";
+      minimapCtx.lineWidth = 1;
+      for (let p = 1; p < 4; p++) {
+        const gx = left + p * plotW / 4;
+        const gy = top + p * plotH / 4;
+        minimapCtx.beginPath();
+        minimapCtx.moveTo(gx, top);
+        minimapCtx.lineTo(gx, top + plotH);
+        minimapCtx.moveTo(left, gy);
+        minimapCtx.lineTo(left + plotW, gy);
+        minimapCtx.stroke();
+      }
+      minimapCtx.strokeStyle = "#6b8aaa";
+      minimapCtx.lineWidth = 1.5;
+      minimapCtx.strokeRect(left, top, plotW, plotH); // Granica calej mapy.
+
+      // Serwer przesyla tylko obiekty w zasiegu widzenia gracza.
+      // Dlatego tutaj mozemy pokazac tylko wirusy znane klientowi.
+      minimapCtx.fillStyle = "#42ec67";
+      for (const node of Object.values(nodes)) {
+        if (!node.isVirus) continue;
+        const x = node.renderX ?? node.x;
+        const y = node.renderY ?? node.y;
+        if (x < mapBorder.minX || x > mapBorder.maxX ||
+            y < mapBorder.minY || y > mapBorder.maxY) continue;
+        minimapCtx.beginPath();
+        minimapCtx.arc(coordX(x), coordY(y), 2.4, 0, Math.PI * 2);
+        minimapCtx.fill();
+      }
+
+      // Jedna kropka gracza nawet po podziale: srodek wazony masa kulek.
+      let sumX = 0, sumY = 0, weightSum = 0;
+      for (const id of myCellIds) {
+        const node = nodes[id];
+        if (!node) continue;
+        const weight = Math.max(1, node.size * node.size);
+        sumX += (node.renderX ?? node.x) * weight;
+        sumY += (node.renderY ?? node.y) * weight;
+        weightSum += weight;
+      }
+      if (!weightSum && !cameraReady) return;
+      const playerX = weightSum ? sumX / weightSum : targetViewX;
+      const playerY = weightSum ? sumY / weightSum : targetViewY;
+      const px = Math.max(left, Math.min(left + plotW, coordX(playerX)));
+      const py = Math.max(top, Math.min(top + plotH, coordY(playerY)));
+      minimapCtx.beginPath();
+      minimapCtx.arc(px, py, 5, 0, Math.PI * 2);
+      minimapCtx.fillStyle = "#00d2ff";
+      minimapCtx.fill();
+      minimapCtx.strokeStyle = "#ffffff";
+      minimapCtx.lineWidth = 1.5;
+      minimapCtx.stroke();
     }
 
     function render(frameTime) {
@@ -888,6 +1058,7 @@
       }
 
       ctx.restore();
+      drawMinimap();
 
       if (isAlive) {
         document.getElementById("scoreVal").textContent = totalMass;
