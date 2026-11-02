@@ -14,6 +14,7 @@ const Player = require('./Player');
 const Client = require('./Client');
 const PlayerCommand = require('./modules/PlayerCommand');
 const BotLoader = require('./ai/BotLoader');
+const BubbleXBotAI = require('./ai/BubbleXBotAI');
 const Gamemode = require('./gamemodes');
 const Packet = require('./packet');
 const UserRoleEnum = require('./enum/UserRoleEnum');
@@ -42,6 +43,7 @@ class Server {
         this.leaderboard = []; // For leaderboard
         this.leaderboardType = -1; // No type
         this.bots = new BotLoader(this);
+        this.bubbleXBotAI = new BubbleXBotAI(this);
 
         // Main loop tick
         this.startTime = Date.now();
@@ -345,7 +347,14 @@ class Server {
             }
         }
         // update
-        for (const client of this.clients) client.player.updateTick();
+        for (const client of this.clients) {
+            // Pozostaw oryginalne odradzanie botow i aktualizacje graczy.
+            client.player.updateTick();
+            // AI podejmuje decyzje po wbudowanym ruchu botow, aby nie nadpisywaly
+            // jej stare algorytmy. Glowna petla wykorzysta nowy cel w nastepnym ticku.
+            if (client.player.isBot && !client.player.isMi && !client.player.isMinion)
+                this.bubbleXBotAI.update(client.player);
+        }
         for (const client of this.clients) client.player.sendUpdate();
         // check minions
         for (let i = 0; i < this.minionTest.length; ++i) {
