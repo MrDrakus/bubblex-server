@@ -58,14 +58,38 @@ const BASE_NICKS = [
     "DzikusPL", "LisekPL", "KrolKulek", "WladcaKulek", "PiernikPL", "Pierniczek",
 ];
 
-// 99 klasycznych koncowek liczbowych, kilka rocznikow oraz koncowki gamingowe.
+// 99 klasycznych koncowek liczbowych, kilka rocznikow i koncowki gamingowe (bez YT).
 const NUMBER_SUFFIXES = [
     ...Array.from({ length: 99 }, (_, index) => String(index + 1)),
     '2004', '2005', '2006', '2007', '2008', '2009', '2010'
 ];
 const GAMING_SUFFIXES = [
-    'PL', 'X', 'YT', 'TV', 'GG', 'Pro', 'Live', 'HD', 'EU', 'XD', 'FPS', 'EZ'
+    'PL', 'X', 'TV', 'GG', 'Pro', 'Live', 'HD', 'EU', 'XD', 'FPS', 'EZ'
 ];
+
+// Czasami (15%) dodaj 1-3 wielkie litery WEWNATRZ bazowej nazwy.
+// Nie zmienia pierwszej litery ani doklejonej pozniej koncowki (PL, numer itd.).
+function randomizeInternalCapitals(base) {
+    if (Math.random() >= 0.15) return base;
+
+    const letters = base.split('');
+    const candidates = [];
+    for (let i = 1; i < letters.length; i++) {
+        // Wybieramy tylko male litery, zeby kazda zmiana byla widoczna.
+        if (letters[i] >= 'a' && letters[i] <= 'z') candidates.push(i);
+    }
+    if (!candidates.length) return base;
+
+    const roll = Math.random();
+    const count = Math.min(candidates.length, roll < 0.55 ? 1 : (roll < 0.87 ? 2 : 3));
+    for (let i = 0; i < count; i++) {
+        // Losowanie bez powtorek: nie zmieniamy stale tej samej litery.
+        const pick = Math.floor(Math.random() * candidates.length);
+        const position = candidates.splice(pick, 1)[0];
+        letters[position] = letters[position].toUpperCase();
+    }
+    return letters.join('');
+}
 
 class BotLoader {
     constructor(server) {
@@ -80,7 +104,7 @@ class BotLoader {
         for (let attempt = 0; attempt < 1000; attempt++) {
             const base = BASE_NICKS[Math.floor(Math.random() * BASE_NICKS.length)];
             const style = Math.random();
-            let name = base;
+            let name = randomizeInternalCapitals(base);
 
             if (style >= 0.4 && style < 0.8) {
                 name += NUMBER_SUFFIXES[Math.floor(Math.random() * NUMBER_SUFFIXES.length)];
