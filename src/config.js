@@ -18,7 +18,7 @@ module.exports = Object.seal({
 "serverBind": "0.0.0.0",
 "serverTracker": 0,
 "serverGamemode": 0,
-"serverBots": 0,
+"serverBots": 20,
 "serverViewBaseX": 2995,
 "serverViewBaseY": 1685,
 "serverMinScale": 0.12,
@@ -54,7 +54,7 @@ module.exports = Object.seal({
 // [FOOD]
 "foodMinSize": 12,
 "foodMaxSize": 24,
-"foodAmount": 1400,
+"foodAmount": 1050,
 "foodMassGrow": 1,
 
 // [VIRUSES]
