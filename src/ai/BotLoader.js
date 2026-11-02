@@ -1,62 +1,113 @@
+// BubbleX.pl - losowe, naturalne nicki botow.
+// 300 bazowych nazw + ponad 100 koncowek. Bez powtorzen wsrod botow.
 const FakeSocket = require('./FakeSocket');
 const Client = require('../Client');
 const BotPlayer = require('./BotPlayer');
 const MinionPlayer = require('./MinionPlayer');
 
-// Pula wymyslonych nickow w stylu prawdziwych graczy.
-// Kazdy bot otrzymuje losowy, niepowtarzajacy sie nick.
-const BOT_NAMES = [
-    'Franek34', 'MatiPL', 'Kacper17', 'NocnyLis', 'TurboKuba',
-    'Dawid12', 'Piter', 'MalyKoks', 'Bananowy', 'Luki77',
-    'Szogun', 'MisiekPL', 'Oskar09', 'Krecik', 'BialyWilk',
-    'CichyGracz', 'Tofik', 'GrubyKot', 'Krystian22', 'KubaBoss',
-    'WariatPL', 'Mlodzik', 'Borsuk', 'SzybkiJanek', 'Kapitan',
-    'Zielony', 'GraczZiom', 'Foczka', 'Mroczny', 'Dyzio',
-    'Rafal24', 'Pawel2004', 'Dzikus', 'Franio99', 'Koxu',
-    'SowaPL', 'Malina', 'Adek', 'Tytan', 'Kruk',
-    'Ziomus', 'JohnnyPL', 'Zbychu', 'KtosTam', 'Kaktus',
-    'Strus', 'PanTost', 'MalyGigant', 'Olek11', 'Rico',
-    'Nero', 'Rekin', 'NiskiPing', 'MrBanan', 'Adasiek',
-    'TurboPanda', 'Ziemniak', 'Spryciarz', 'Leniwiec', 'MasterMati',
-    'Kozak', 'ViperPL', 'Eryk', 'Borys', 'Cinek',
-    'Noobek', 'Koral', 'Bratko', 'Kubson', 'ZielonyKot',
-    'Niebieski', 'Pepe18', 'Szymon96', 'Kongo', 'Felek',
-    'Chudy', 'Mrozu', 'Snejk', 'Waldi', 'Speedy',
-    'Blady', 'MrPies', 'NocnyGracz', 'Kiwi', 'Zolw',
-    'Zefir', 'Maniak', 'Benek', 'Wafel', 'Janek07',
-    'BlackRaven', 'Cytrynka', 'CichyMati', 'Kacpi', 'Wiktor44',
-    'Tofik13', 'Zaba', 'Lisek', 'TitanX', 'Ogryzek',
-    'Ziomek24', 'Staszek', 'PanPierog', 'Natanek', 'Koziolek',
-    'Noni', 'Damian200', 'Tobiasz', 'Reksio', 'LeonPL',
-    'PanKaktus', 'MalyWojtek', 'Fenix', 'Rybak', 'Chomik',
-    'Raptor', 'Mamut', 'Kuleczka', 'Miki12', 'Frycek',
-    'PandaPL', 'Kornel', 'GrubyBanan', 'Gucio', 'Tuptus'
+const BASE_NICKS = [
+    "Franek", "Mati", "Kuba", "Kacper", "Oskar", "Dawid",
+    "Patryk", "Bartek", "Szymon", "Michal", "Pawel", "Rafal",
+    "Arek", "Tomek", "Wojtek", "Janek", "Filip", "Igor",
+    "Eryk", "Natan", "Alan", "Maks", "Leon", "Adam",
+    "Wiktor", "Marcel", "Maciek", "Karol", "Dominik", "Mateusz",
+    "Jakub", "Lukasz", "Adrian", "Krystian", "Damian", "Daniel",
+    "Hubert", "Grzesiek", "Robert", "Piotrek", "Radek", "Mirek",
+    "Areczek", "Staszek", "Antos", "Franio", "Mikolaj", "Olaf",
+    "Nikodem", "Tymek", "Tobiasz", "Olek", "Gracjan", "Marcin",
+    "Radzio", "Cinek", "Norbi", "Benek", "Witek", "Kamil",
+    "Kornelek", "Kornel", "Przemek", "MatiMati", "Kubson", "Kacpi",
+    "Bartus", "Felek", "Gucio", "Zygi", "Kori", "Piter",
+    "Zbychu", "JohnnyP", "Jasiu", "Kazik", "LeoN", "Szymek",
+    "Blazej", "Slawek", "Julek", "Jurek", "Romek", "Leszek",
+    "Kajtek", "Miki", "Fifi", "FelekPL", "HarryPL", "AlexPL",
+    "MartinPL", "KrisPL", "Rysiek", "Franiu", "Boniek", "Cezar",
+    "Grzesiu", "Olo", "Kubi", "Czarek", "Krysiek", "Tomeczek",
+    "Dawidek", "Rafcio", "Pawcio", "Kamyk", "Wiciu", "Fido",
+    "Adasiek", "Raptor", "Viper", "Fenix", "Reaper", "Shadow",
+    "Snajper", "NeoPixel", "DarkWolf", "RedFox", "BlueWolf", "BlackCat",
+    "SilverFox", "NightFox", "GhostRider", "SteelFox", "TurboMati", "QuickShot",
+    "SpeedyX", "FastKuba", "PixelPro", "NinjaPL", "NinjaKox", "ZenonX",
+    "MrFreeze", "FrostX", "ArcticFox", "IceKing", "BlazeX", "FireBolt",
+    "DragonPL", "DragonX", "Drako", "ThunderPL", "FlashPL", "FlashX",
+    "StormX", "Koxu", "Koxik", "Koxiarz", "Noobek", "NoobPro",
+    "ProKuba", "ProMati", "SkillShot", "HeadshotPL", "AimKing", "XenoRex",
+    "ZoroX", "RikoX", "RamboPL", "RamboX", "TigerX", "LethalFox",
+    "GhostPL", "DarkRaptor", "SteelRaven", "BlackRaven", "ShadowFox", "SilentPL",
+    "TurboLis", "TurboKot", "TurboPanda", "MegaLis", "MegaKot", "RaptorPL",
+    "CichySnajper", "SlowMotion", "HighPing", "NiskiPing", "PixelMan", "PixelBoy",
+    "PixelWolf", "NeoFox", "NeoRex", "MrPixel", "PlayerOne", "GameOver",
+    "TryHardPL", "KoxikPL", "Spaceman", "ZoomerPL", "DriftKing", "Speedster",
+    "MrNinja", "NocnyGracz", "ZimnyLis", "HektorPL", "HunterPL", "ScoutPL",
+    "FalconPL", "WolfKing", "RysiuPro", "KobraPL", "TornadoX", "DynamitPL",
+    "SztormPL", "TytanPL", "SprinterPL", "TurboGracz", "KrukPL", "KrukX",
+    "GolemPL", "WizardPL", "CichyKox", "GigaMati", "PowerKuba", "MalyKoks",
+    "MalyBoss", "MistrzPL", "MistrzKulek", "GigaGracz", "MegaKuba", "LokiPL",
+    "ZeusPL", "NocnyLis", "GrubyKot", "PanTost", "PanPierog", "Bananek",
+    "MrBanan", "Bananowy", "KiwiPL", "KiwiX", "Lisek", "Krecik",
+    "MalyKret", "PanKret", "Chomik", "ChomikPL", "Ziemniak", "Ziemniaczek",
+    "Pierozek", "Klusek", "Kluska", "Ogorek", "PanOgorek", "MalyZolw",
+    "Zolwik", "Mamut", "PandaPL", "PandaX", "Foczka", "FokaPL",
+    "Spryciarz", "Tuptus", "Tuptak", "Kaktus", "PanKaktus", "Leniwiec",
+    "LeniwiecPL", "GrubyBanan", "GrubyKret", "GrubyLis", "GigaZiemniak", "NocnyKot",
+    "NocnyKruk", "NocnyZolw", "BialyWilk", "BorsukPL", "BorsukX", "ZabaPL",
+    "ZabkaPL", "ZefirPL", "Zefirek", "RybakPL", "RekinPL", "RybkaPL",
+    "GraczZiom", "Ziomus", "ZiomPL", "Ziomek", "Tofik", "TofikPL",
+    "MisiekPL", "MisioX", "PuchatekPL", "WafelPL", "Wafelek", "SowaPL",
+    "SowaX", "Pingwinek", "PingwinPL", "JezykPL", "JezykX", "MalyDzik",
+    "DzikusPL", "LisekPL", "KrolKulek", "WladcaKulek", "PiernikPL", "Pierniczek",
+];
+
+// 99 klasycznych koncowek liczbowych, kilka rocznikow oraz koncowki gamingowe.
+const NUMBER_SUFFIXES = [
+    ...Array.from({ length: 99 }, (_, index) => String(index + 1)),
+    '2004', '2005', '2006', '2007', '2008', '2009', '2010'
+];
+const GAMING_SUFFIXES = [
+    'PL', 'X', 'YT', 'TV', 'GG', 'Pro', 'Live', 'HD', 'EU', 'XD', 'FPS', 'EZ'
 ];
 
 class BotLoader {
     constructor(server) {
         this.server = server;
         this.botCount = 0;
-        this.availableNames = BOT_NAMES.slice();
         this.usedNames = new Set();
     }
 
     randomBotName() {
-        let name;
+        // Ok. 40% nickow bez koncowki, 40% z cyfra i 20% z gamingowa koncowka.
+        // Sprawdzamy tez nicki juz obecnych graczy, zeby ograniczyc kolizje nazw.
+        for (let attempt = 0; attempt < 1000; attempt++) {
+            const base = BASE_NICKS[Math.floor(Math.random() * BASE_NICKS.length)];
+            const style = Math.random();
+            let name = base;
 
-        if (this.availableNames.length > 0) {
-            // Losowanie bez powtorek: wybrany nick znika z puli.
-            const index = Math.floor(Math.random() * this.availableNames.length);
-            name = this.availableNames.splice(index, 1)[0];
-        } else {
-            // Rezerwa, gdyby w przyszlosci bylo wiecej botow niz nickow.
-            do {
-                name = `Gracz${Math.floor(Math.random() * 90000) + 10000}`;
-            } while (this.usedNames.has(name));
+            if (style >= 0.4 && style < 0.8) {
+                name += NUMBER_SUFFIXES[Math.floor(Math.random() * NUMBER_SUFFIXES.length)];
+            } else if (style >= 0.8) {
+                // Nie doklejamy kolejnego tagu do nicku, ktory juz go ma (np. PLPL).
+                if (GAMING_SUFFIXES.some(tag => base.endsWith(tag))) continue;
+                name += GAMING_SUFFIXES[Math.floor(Math.random() * GAMING_SUFFIXES.length)];
+            }
+
+            // Nazwy krotkie i czytelne, pasujace do rankingu i ekranu gry.
+            if (name.length > 15 || this.usedNames.has(name)) continue;
+            const occupied = this.server.clients.some(socket =>
+                socket.player && socket.player._name === name
+            );
+            if (occupied) continue;
+
+            this.usedNames.add(name);
+            return name;
         }
 
-        this.usedNames.add(name);
-        return name;
+        // Awaryjnie, gdyby pula byla juz zajeta.
+        let fallback;
+        do {
+            fallback = 'Gracz' + Math.floor(Math.random() * 100000);
+        } while (this.usedNames.has(fallback));
+        this.usedNames.add(fallback);
+        return fallback;
     }
 
     addBot() {
@@ -66,7 +117,6 @@ class BotLoader {
 
         const name = this.randomBotName();
         this.botCount++;
-
         this.server.clients.push(socket);
         socket.client.setNickname(name);
     }
