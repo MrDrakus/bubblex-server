@@ -148,7 +148,7 @@
 
     #score-hud {
       position: absolute;
-      top: 277px; /* Pod minimapą, żeby HUD się nie nakładał. */
+      top: 238px; /* Pod mniejsza minimapa, bez nakladania. */
       left: 25px;
       font-size: 18px;
       font-weight: 600;
@@ -249,7 +249,7 @@
       position: absolute;
       top: 16px;
       left: 20px;
-      width: 214px;
+      width: 178px;
       padding: 10px;
       border: 1px solid #344960;
       border-radius: 12px;
@@ -259,19 +259,9 @@
       z-index: 11;
       pointer-events: none;
     }
-    #minimap-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 7px;
-      color: #d9e9f5;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.6px;
-    }
     #minimap-canvas {
-      width: 192px;
-      height: 192px;
+      width: 156px;
+      height: 156px;
       display: block;
       border: 1px solid #3b506b;
       border-radius: 4px;
@@ -282,7 +272,7 @@
       justify-content: space-between;
       margin-top: 7px;
       color: #a5b7cb;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 600;
     }
     #minimap-legend span { display: inline-flex; align-items: center; gap: 5px; }
@@ -291,9 +281,9 @@
     .map-dot.virus { background: #42ec67; }
 
     @media (max-height: 680px) {
-      #minimap-hud { top: 9px; left: 12px; width: 182px; padding: 8px; }
-      #minimap-canvas { width: 164px; height: 164px; }
-      #score-hud { top: 236px; left: 15px; font-size: 16px; }
+      #minimap-hud { top: 9px; left: 12px; width: 158px; padding: 8px; }
+      #minimap-canvas { width: 140px; height: 140px; }
+      #score-hud { top: 205px; left: 15px; font-size: 16px; }
     }
 
     canvas { display: block; }
@@ -341,8 +331,7 @@
   </div>
 
   <div id="minimap-hud" aria-label="Minimapa gry">
-    <div id="minimap-title"><span>MINIMAPA</span><span>BUBBLEX</span></div>
-    <canvas id="minimap-canvas" width="192" height="192" aria-label="Mapa z Twoją pozycją i widocznymi wirusami"></canvas>
+    <canvas id="minimap-canvas" width="156" height="156" aria-label="Mapa z Twoją pozycją i widocznymi wirusami"></canvas>
     <div id="minimap-legend">
       <span><i class="map-dot you"></i> Ty</span>
       <span><i class="map-dot virus"></i> Wirusy w zasięgu</span>
