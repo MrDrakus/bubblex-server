@@ -1,4 +1,4 @@
-// BubbleX.pl — AI botow v2.
+// BubbleX.pl — AI botow v3: stabilne omijanie wirusow.
 // 20 botow, cztery poziomy trudnosci po 5 botow.
 // Dziala z istniejacym Server.js wywolujacym bubbleXBotAI.update(bot).
 // Nie zmienia fizyki gry ani szybkosci kulek.
@@ -46,6 +46,28 @@ class BubbleXBotAI {
         ) : goal;
     }
 
+    // Sprawdza, czy prosta droga do celu przecina obszar miny.
+    // Umozliwia wybor jedzenia / przeciwnika, do ktorego bot moze dojsc
+    // bez nieustannego zawracania przy tym samym wirusie.
+    pathCrossesVirus(ax, ay, bx, by, viruses, ownRadius) {
+        const dx = bx - ax;
+        const dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 1) return false;
+        for (const obstacle of viruses) {
+            const v = obstacle.cell;
+            const wx = v.position.x - ax;
+            const wy = v.position.y - ay;
+            const t = Math.max(0, Math.min(1, (wx * dx + wy * dy) / lenSq));
+            const nearX = ax + dx * t;
+            const nearY = ay + dy * t;
+            const safeRadius = v.radius + ownRadius + 45;
+            const distSq = (v.position.x - nearX) ** 2 + (v.position.y - nearY) ** 2;
+            if (distSq < safeRadius * safeRadius) return true;
+        }
+        return false;
+    }
+
     dropChase(brain, tick, restTicks) {
         if (brain.chaseId != null) {
             brain.avoidTargets.set(brain.chaseId, tick + restTicks);
@@ -86,7 +108,9 @@ class BubbleXBotAI {
                 sampleTick: null,
                 sampleX: 0,
                 sampleY: 0,
-                lastAim: null
+                lastAim: null,
+                virusAvoidId: null,
+                virusAvoidSide: 1
             };
         }
         const brain = bot._bubbleXAI;
@@ -147,6 +171,44 @@ class BubbleXBotAI {
         }
 
         const maxCells = this.server.config.playerMaxCells || 16;
+
+        // Bot z niepelnym podzialem moze zostac rozbity przez mine.
+        // Pamietamy wybrany wirus i wychodzimy poza SZERSZA strefe niz
+        // ta, w ktorej zaczynamy unik. To eliminuje migotanie decyzji.
+        const dangerousViruses = [];
+        if (own.length < maxCells) {
+            for (const v of this.server.nodesVirus) {
+                if (!v || v.isRemoved || !v.position || largest.radius < v.radius * 1.17) continue;
+                const dist = Math.hypot(v.position.x - cx, v.position.y - cy);
+                const enterRadius = (largest.radius + v.radius + 100) * p.caution;
+                if (dist > Math.max(p.vision, 900) + enterRadius) continue;
+                dangerousViruses.push({
+                    cell: v,
+                    dist,
+                    enterRadius,
+                    exitRadius: enterRadius + Math.max(140, largest.radius * 0.4)
+                });
+            }
+        }
+
+        let avoidVirus = null;
+        if (brain.virusAvoidId != null) {
+            const previous = dangerousViruses.find(v => v.cell.id === brain.virusAvoidId);
+            if (previous && previous.dist < previous.exitRadius) avoidVirus = previous;
+        }
+        if (!avoidVirus) {
+            brain.virusAvoidId = null;
+            for (const v of dangerousViruses) {
+                if (v.dist < v.enterRadius && (!avoidVirus || v.dist / v.enterRadius < avoidVirus.dist / avoidVirus.enterRadius)) {
+                    avoidVirus = v;
+                }
+            }
+            if (avoidVirus) {
+                brain.virusAvoidId = avoidVirus.cell.id;
+                brain.virusAvoidSide = Math.random() < 0.5 ? -1 : 1;
+            }
+        }
+
         const visionSq = p.vision * p.vision;
         let fleeX = 0, fleeY = 0, danger = 0;
         let bestPrey = null, bestPreyScore = -Infinity;
@@ -173,29 +235,15 @@ class BubbleXBotAI {
 
             // Cele do polowania: osiagnalne, wystarczajaco male i nie na cooldownie.
             if (d > p.huntRange || largest.radius < cell.radius * 1.28 ||
-                (brain.avoidTargets.get(cell.id) || 0) > tick) continue;
+                (brain.avoidTargets.get(cell.id) || 0) > tick ||
+                this.pathCrossesVirus(cx, cy, cell.position.x, cell.position.y,
+                    dangerousViruses, largest.radius)) continue;
             let score = (20 + cell.radius * 0.07) * p.aggression - d * 0.025;
             // Nie zmieniaj celu co chwile podczas poprawnie przebiegajacej gonitwy.
             if (brain.chaseId === cell.id) score += 5;
             if (score > bestPreyScore) {
                 bestPreyScore = score;
                 bestPrey = { cell, d };
-            }
-        }
-
-        // Oddal sie od min, jesli groza dodatkowym rozdzieleniem.
-        if (own.length < maxCells) {
-            for (const v of this.server.nodesVirus) {
-                if (!v || v.isRemoved || !v.position || largest.radius < v.radius * 1.17) continue;
-                const dx = v.position.x - cx;
-                const dy = v.position.y - cy;
-                const d = Math.max(1, Math.hypot(dx, dy));
-                const safe = (largest.radius + v.radius + 100) * p.caution;
-                if (d >= safe) continue;
-                const strength = (safe - d) / safe * 1.2;
-                fleeX -= dx / d * strength;
-                fleeY -= dy / d * strength;
-                danger += strength;
             }
         }
 
@@ -206,6 +254,8 @@ class BubbleXBotAI {
                 const dy = food.position.y - cy;
                 const d2 = dx * dx + dy * dy;
                 if (d2 > visionSq) continue;
+                if (this.pathCrossesVirus(cx, cy, food.position.x, food.position.y,
+                    dangerousViruses, largest.radius)) continue;
                 const d = Math.sqrt(d2);
                 const score = 17 + Math.min(40, food.radius) * 0.1 - d * 0.022;
                 if (score > bestFoodScore) {
@@ -224,6 +274,29 @@ class BubbleXBotAI {
             } else {
                 aim = this.wanderPoint(cx, cy, 800, margin);
             }
+        } else if (avoidVirus) {
+            // Zachowujemy jedna strone omijania (lewa/prawa) do chwili
+            // wyjscia poza strefe bezpieczenstwa danej miny.
+            this.dropChase(brain, tick, p.restTicks);
+            brain.wander = null;
+            const v = avoidVirus.cell;
+            let awayX = cx - v.position.x;
+            let awayY = cy - v.position.y;
+            let len = Math.hypot(awayX, awayY);
+            if (len < 0.001) {
+                awayX = 1;
+                awayY = 0;
+                len = 1;
+            }
+            awayX /= len;
+            awayY /= len;
+            const side = brain.virusAvoidSide;
+            // Połączenie oddalania z ruchem w bok zapobiega
+            // staniu naprzeciwko miny i wahaniu lewo/prawo.
+            aim = {
+                x: cx + awayX * 570 - awayY * side * 340,
+                y: cy + awayY * 570 + awayX * side * 340
+            };
         } else if (brain.escapeUntil > tick && brain.escapeAim) {
             aim = brain.escapeAim;
         } else {
@@ -285,8 +358,15 @@ class BubbleXBotAI {
             if (!aim) {
                 // Gdy w zasiegu nie ma jedzenia ani dobrych celow, zwiedzaj mape.
                 if (!brain.wander || tick >= brain.wander.until ||
-                    Math.hypot(brain.wander.x - cx, brain.wander.y - cy) < 120) {
-                    const point = this.wanderPoint(cx, cy, 800, margin);
+                    Math.hypot(brain.wander.x - cx, brain.wander.y - cy) < 120 ||
+                    this.pathCrossesVirus(cx, cy, brain.wander.x, brain.wander.y,
+                        dangerousViruses, largest.radius)) {
+                    let point = this.wanderPoint(cx, cy, 800, margin);
+                    for (let attempt = 0; attempt < 8 &&
+                        this.pathCrossesVirus(cx, cy, point.x, point.y,
+                            dangerousViruses, largest.radius); attempt++) {
+                        point = this.wanderPoint(cx, cy, 800, margin);
+                    }
                     brain.wander = { x: point.x, y: point.y, until: tick + 220 + Math.random() * 250 };
                 }
                 aim = brain.wander;
