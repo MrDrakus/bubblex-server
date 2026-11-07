@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>BubbleX.pl - Serwer MultiOgar</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body, html {
@@ -25,19 +26,20 @@
 
     .modal-card {
       background: #11141f;
-      width: 400px;
-      padding: 30px 28px 24px 28px;
+      width: 420px;
+      padding: 26px 26px 20px 26px;
       border-radius: 20px;
       border: 1px solid #23293d;
       box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 210, 255, 0.15);
       text-align: center;
+      position: relative;
     }
 
     .brand-title {
       font-size: 34px;
       font-weight: 800;
       color: #ffffff;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       text-align: left;
     }
     .brand-title span { color: #00d2ff; }
@@ -46,8 +48,47 @@
       font-size: 13px;
       color: #7e8ea8;
       text-align: left;
-      margin-bottom: 20px;
+      margin-bottom: 14px;
     }
+
+    /* Pasek konta i klanu */
+    .user-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #090b12;
+      border: 1px solid #23293d;
+      padding: 8px 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    .user-info {
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .user-info strong { color: #00d2ff; }
+    .user-pts { color: #ffd700; font-weight: 700; }
+    .auth-btn-group {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-small {
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #1b233a;
+      border: 1px solid #334166;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-small:hover { background: #263354; }
+    .btn-small.cyan { background: #00d2ff; color: #050608; border: none; }
+    .btn-small.cyan:hover { background: #33dcff; }
 
     .row-inputs {
       display: flex;
@@ -109,7 +150,7 @@
     .action-row {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .btn-play {
       flex: 1;
@@ -130,25 +171,60 @@
       font-size: 12px;
       color: #7e8ea8;
       line-height: 1.6;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       background: rgba(9, 11, 18, 0.7);
-      padding: 10px;
+      padding: 8px;
       border-radius: 8px;
     }
     .controls-hint strong { color: #00d2ff; }
 
     #server-status {
       font-size: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-weight: bold;
     }
     .status-connecting { color: #ffd700; }
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
+    /* Modale Auth & Klan */
+    .sub-modal {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(17, 20, 31, 0.98);
+      border-radius: 20px;
+      padding: 24px;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      z-index: 25;
+    }
+    .sub-modal h3 {
+      font-size: 18px;
+      color: #00d2ff;
+      font-weight: 800;
+    }
+    .sub-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #090b12;
+      border: 1px solid #23293d;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #fff;
+      outline: none;
+    }
+    .sub-input:focus { border-color: #00d2ff; }
+    .file-label {
+      font-size: 11px;
+      color: #7e8ea8;
+      text-align: left;
+    }
+
     #score-hud {
       position: absolute;
-      top: 238px; /* Pod mniejsza minimapa, bez nakladania. */
+      top: 238px;
       left: 25px;
       font-size: 18px;
       font-weight: 600;
@@ -182,11 +258,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    #leaderboard ol {
-      list-style-position: inside;
-      padding: 0;
-      margin: 0;
-    }
+    #leaderboard ol { list-style-position: inside; padding: 0; margin: 0; }
     #leaderboard li {
       display: flex;
       justify-content: space-between;
@@ -194,12 +266,8 @@
       color: #cbd5e1;
       font-weight: 600;
     }
-    #leaderboard li.me {
-      color: #00d2ff;
-      font-weight: 800;
-    }
+    #leaderboard li.me { color: #00d2ff; font-weight: 800; }
 
-    /* Czat gry – lewa krawędź, pionowo na środku ekranu. */
     #game-chat {
       position: absolute;
       left: 24px;
@@ -244,7 +312,6 @@
     }
     #chat-input::placeholder { color: #94a3b8; }
 
-    /* Minimapa: caly obszar mapy w lewym gornym rogu. */
     #minimap-hud {
       position: absolute;
       top: 16px;
@@ -296,6 +363,19 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
+      <!-- Panel Konta Gracza -->
+      <div class="user-bar" id="userBar">
+        <div class="user-info">
+          <span id="userNameLabel">Status: <strong>Gość</strong></span>
+          <span id="userPointsLabel" class="user-pts">Punkty: 0</span>
+        </div>
+        <div class="auth-btn-group">
+          <button class="btn-small cyan" id="btnOpenAuth" onclick="openModal('authModal')">Zaloguj / Rejestracja</button>
+          <button class="btn-small" id="btnOpenClan" onclick="openModal('clanModal')" style="display: none;">Klan</button>
+          <button class="btn-small" id="btnLogout" onclick="logoutUser()" style="display: none;">Wyloguj</button>
+        </div>
+      </div>
+
       <div id="server-status" class="status-connecting">Łączenie z serwerem gry...</div>
 
       <div class="mode-container">
@@ -324,14 +404,37 @@
 
       <div class="controls-hint">
         Myszka: <strong>Kierunek ruchu</strong><br>
-        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Jeden wyrzut | <strong>E</strong>: Makro (wolniej)<br>
+        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Jeden wyrzut | <strong>E</strong>: Makro<br>
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
+      </div>
+
+      <!-- Okno Logowania / Rejestracji -->
+      <div class="sub-modal" id="authModal">
+        <h3>KONTO GRACZA</h3>
+        <input type="email" id="authEmail" class="sub-input" placeholder="Twój e-mail...">
+        <input type="password" id="authPass" class="sub-input" placeholder="Hasło (min. 6 znaków)...">
+        <div style="display:flex; gap:8px;">
+          <button class="btn-small cyan" style="flex:1; padding:10px;" onclick="handleLogin()">Zaloguj</button>
+          <button class="btn-small" style="flex:1; padding:10px;" onclick="handleRegister()">Rejestracja</button>
+        </div>
+        <button class="btn-small" onclick="closeModal('authModal')">Wróć</button>
+      </div>
+
+      <!-- Okno Zakładania Klanu & Wgrywania Skina -->
+      <div class="sub-modal" id="clanModal">
+        <h3>ZARZĄDZANIE KLANEM</h3>
+        <input type="text" id="clanNameInput" class="sub-input" maxlength="20" placeholder="Nazwa klanu (np. Smoki)...">
+        <input type="text" id="clanTagInput" class="sub-input" maxlength="5" placeholder="Tag (np. SMK)...">
+        <div class="file-label">Herb / Własny Skin Klanu (PNG lub JPG):</div>
+        <input type="file" id="clanSkinInput" accept="image/*" class="sub-input">
+        <button class="btn-small cyan" id="btnCreateClan" style="padding:10px;" onclick="handleCreateClan()">Załóż klan (Koszt: 500 pkt)</button>
+        <button class="btn-small" onclick="closeModal('clanModal')">Wróć</button>
       </div>
     </div>
   </div>
 
   <div id="minimap-hud" aria-label="Minimapa gry">
-    <canvas id="minimap-canvas" width="156" height="156" aria-label="Mapa z Twoją pozycją i widocznymi wirusami"></canvas>
+    <canvas id="minimap-canvas" width="156" height="156"></canvas>
     <div id="minimap-legend">
       <span><i class="map-dot you"></i> Ty</span>
       <span><i class="map-dot virus"></i> Wirusy w zasięgu</span>
@@ -346,15 +449,165 @@
   </div>
 
   <div id="game-chat" aria-label="Czat gry">
-    <div id="chat-messages" role="log" aria-label="Wiadomości graczy"></div>
-    <input type="text" id="chat-input" maxlength="64"
-           placeholder="Napisz wiadomość i naciśnij Enter..." autocomplete="off"
-           aria-label="Wpisz wiadomość na czacie">
+    <div id="chat-messages" role="log"></div>
+    <input type="text" id="chat-input" maxlength="64" placeholder="Napisz wiadomość i naciśnij Enter..." autocomplete="off">
   </div>
 
   <canvas id="cvs"></canvas>
 
   <script>
+    // Inicjalizacja Supabase
+    // Podmień poniższe dwa parametry na wartości z Twojego panelu Supabase (Project Settings -> API)
+    const SUPABASE_URL = "https://twoj-projekt.supabase.co";
+    const SUPABASE_ANON_KEY = "twoj-klucz-anon";
+    const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    let currentUser = null;
+    let currentProfile = null;
+    let currentClan = null;
+    const loadedSkins = {};
+
+    function getSkinImage(url) {
+      if (!url) return null;
+      if (!loadedSkins[url]) {
+        const img = new Image();
+        img.src = url;
+        loadedSkins[url] = img;
+      }
+      return loadedSkins[url];
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = "flex"; }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+    async function handleLogin() {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPass").value.trim();
+      if (!email || !password) return alert("Uzupełnij email i hasło!");
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) return alert("Błąd logowania: " + error.message);
+      currentUser = data.user;
+      closeModal('authModal');
+      await loadUserData();
+    }
+
+    async function handleRegister() {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPass").value.trim();
+      if (!email || !password) return alert("Uzupełnij email i hasło!");
+
+      const { error } = await sb.auth.signUp({ email, password });
+      if (error) return alert("Błąd rejestracji: " + error.message);
+      alert("Konto utworzone! Możesz się teraz zalogować.");
+    }
+
+    async function logoutUser() {
+      if (sb) await sb.auth.signOut();
+      currentUser = null;
+      currentProfile = null;
+      currentClan = null;
+      updateUserUI();
+    }
+
+    async function loadUserData() {
+      if (!currentUser || !sb) return;
+      const { data: profile } = await sb
+        .from('profiles')
+        .select('*, clans(*)')
+        .eq('id', currentUser.id)
+        .single();
+
+      currentProfile = profile;
+      if (profile && profile.clans) {
+        currentClan = profile.clans;
+        document.getElementById("nick").value = `[${currentClan.tag}] ${profile.username}`;
+      } else if (profile) {
+        currentClan = null;
+        document.getElementById("nick").value = profile.username;
+      }
+      updateUserUI();
+    }
+
+    function updateUserUI() {
+      const nameLabel = document.getElementById("userNameLabel");
+      const ptsLabel = document.getElementById("userPointsLabel");
+      const btnOpenAuth = document.getElementById("btnOpenAuth");
+      const btnOpenClan = document.getElementById("btnOpenClan");
+      const btnLogout = document.getElementById("btnLogout");
+
+      if (currentUser && currentProfile) {
+        nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
+        ptsLabel.textContent = `Punkty: ${currentProfile.points}`;
+        btnOpenAuth.style.display = "none";
+        btnOpenClan.style.display = "block";
+        btnLogout.style.display = "block";
+      } else {
+        nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
+        ptsLabel.textContent = `Punkty: 0`;
+        btnOpenAuth.style.display = "block";
+        btnOpenClan.style.display = "none";
+        btnLogout.style.display = "none";
+      }
+    }
+
+    async function handleCreateClan() {
+      if (!currentUser || !currentProfile) return alert("Zaloguj się najpierw!");
+      const clanName = document.getElementById("clanNameInput").value.trim();
+      const clanTag = document.getElementById("clanTagInput").value.trim().toUpperCase();
+      const fileInput = document.getElementById("clanSkinInput");
+
+      if (!clanName || !clanTag) return alert("Wprowadź nazwę oraz tag klanu!");
+      if (currentProfile.points < 500) return alert("Założenie klanu wymaga 500 punktów! Zdobądź je lub doładuj.");
+      if (!fileInput.files.length) return alert("Wybierz plik graficzny na herb/skin klanu!");
+
+      const file = fileInput.files[0];
+      const btn = document.getElementById("btnCreateClan");
+      btn.disabled = true;
+      btn.textContent = "Wgrywanie...";
+
+      try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `clan_${currentUser.id}_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await sb.storage.from('skins').upload(filePath, file);
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = sb.storage.from('skins').getPublicUrl(filePath);
+
+        const { data: newClan, error: clanError } = await sb.from('clans').insert([{
+          name: clanName,
+          tag: clanTag,
+          skin_url: publicUrl,
+          leader_id: currentUser.id
+        }]).select().single();
+        if (clanError) throw clanError;
+
+        await sb.from('profiles').update({
+          clan_id: newClan.id,
+          points: currentProfile.points - 500
+        }).eq('id', currentUser.id);
+
+        alert(`Klan [${clanTag}] został utworzony ze skinem!`);
+        closeModal('clanModal');
+        await loadUserData();
+      } catch (err) {
+        alert("Błąd: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Załóż klan (Koszt: 500 pkt)";
+      }
+    }
+
+    // Sprawdzenie aktywnej sesji po odświeżeniu
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!sb) return;
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        await loadUserData();
+      }
+    });
+
     const cvs = document.getElementById("cvs");
     const ctx = cvs.getContext("2d");
 
@@ -365,8 +618,6 @@
     resize();
     window.addEventListener("resize", resize);
 
-    // Minimapa ma stale granice calej mapy, nie tylko aktualny widok kamery.
-    // Ustawienia awaryjne odpowiadaja obecnemu config.js (14142 x 14142).
     const minimapHud = document.getElementById("minimap-hud");
     const minimapCanvas = document.getElementById("minimap-canvas");
     const minimapCtx = minimapCanvas.getContext("2d");
@@ -382,16 +633,13 @@
     let reconnectTimeout = null;
     let currentServerUrl = "wss://bubblex-server.onrender.com";
 
-    // Obsługa makro pod W / E
     let ejectInterval = null;
     let isEjecting = false;
 
-    // Przechowalnia encji z serwera
     let nodes = {};
     let myCellIds = new Set();
     let leaderboard = [];
 
-    // Płynna kamera: aktualny widok i docelowa pozycja/zoom z serwera.
     let viewX = 0;
     let viewY = 0;
     let viewZoom = 1.0;
@@ -401,7 +649,6 @@
     let cameraReady = false;
     let lastCameraFrame = null;
 
-    // Pozycja kursora myszy
     let mouseX = cvs.width / 2;
     let mouseY = cvs.height / 2;
 
@@ -412,9 +659,7 @@
     });
 
     function sendEject() {
-      if (isAlive && isConnected) {
-        sendUint8(21);
-      }
+      if (isAlive && isConnected) sendUint8(21);
     }
 
     function startEjecting() {
@@ -432,7 +677,6 @@
       }
     }
 
-    // Czat zgodny z protokołem MultiOgarII v5: identyfikator 99, flagi, UTF-16LE.
     const chatPanel = document.getElementById("game-chat");
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
@@ -455,12 +699,11 @@
 
     function submitChat() {
       const message = chatInput.value.trim().slice(0, 64);
-      // Serwer ma własny limit wiadomości (około jednej na sekundę).
       if (message && isConnected && ws && ws.readyState === WebSocket.OPEN) {
         const buffer = new ArrayBuffer(2 + (message.length + 1) * 2);
         const data = new DataView(buffer);
-        data.setUint8(0, 99); // Czat
-        data.setUint8(1, 0);  // Flagi wiadomości
+        data.setUint8(0, 99);
+        data.setUint8(1, 0);
         for (let i = 0; i < message.length; i++) {
           data.setUint16(2 + i * 2, message.charCodeAt(i), true);
         }
@@ -477,7 +720,7 @@
         if (code === 0) return { content, next: p + 2 };
         content += String.fromCharCode(code);
       }
-      return null; // Niewłaściwy / niepełny pakiet
+      return null;
     }
 
     function appendChatMessage(name, message, isServer, color) {
@@ -489,7 +732,7 @@
       sender.style.color = isServer ? "#94a3b8" : color;
       sender.textContent = name + ": ";
       const content = document.createElement("span");
-      content.textContent = message; // Bez interpretowania HTML wpisanego przez graczy.
+      content.textContent = message;
       line.append(sender, content);
       chatMessages.appendChild(line);
       while (chatMessages.children.length > 80) chatMessages.firstChild.remove();
@@ -510,25 +753,22 @@
           e.preventDefault();
           closeChat();
         }
-        return; // Podczas pisania W, E i spacja nie sterują kulką.
+        return;
       }
       if (!isAlive || !isConnected) return;
       if (e.code === "Space") {
         sendUint8(17);
       } else if (e.code === "KeyW") {
-        if (!e.repeat) sendEject(); // Jeden wyrzut na naciśnięcie W
+        if (!e.repeat) sendEject();
       } else if (e.code === "KeyE") {
-        startEjecting(); // Ciągły wyrzut przy trzymaniu E
+        startEjecting();
       }
     });
 
     window.addEventListener("keyup", (e) => {
-      if (e.code === "KeyE") {
-        stopEjecting();
-      }
+      if (e.code === "KeyE") stopEjecting();
     });
 
-    // Zatrzymaj makro E po przejściu do innej karty lub okna.
     window.addEventListener("blur", stopEjecting);
 
     const statusEl = document.getElementById("server-status");
@@ -541,12 +781,12 @@
       }
 
       currentServerUrl = serverUrl || currentServerUrl;
-      mapBorder = { ...defaultMapBorder }; // Reset, gdy gracz zmienia tryb.
+      mapBorder = { ...defaultMapBorder };
       minimapHud.style.display = "none";
       closeChat();
       chatPanel.style.display = "none";
-      chatMessages.replaceChildren(); // Nie mieszaj czatów różnych trybów gry.
-      cameraReady = false; // Po zmianie serwera ustaw kamerę od razu przy pierwszym pakiecie.
+      chatMessages.replaceChildren();
+      cameraReady = false;
       lastCameraFrame = null;
       statusEl.textContent = "Łączenie z serwerem...";
       statusEl.className = "status-connecting";
@@ -607,9 +847,7 @@
         reconnectTimeout = setTimeout(() => connect(currentServerUrl), 2500);
       };
 
-      ws.onerror = () => {
-        if (ws) ws.close();
-      };
+      ws.onerror = () => { if (ws) ws.close(); };
     }
 
     function switchMode(newUrl) {
@@ -630,10 +868,6 @@
 
     function sendTarget() {
       if (!isAlive || !isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-      // Kierunek myszy liczony względem AKTUALNEJ pozycji kamery z serwera.
-      // Nie używamy wygładzonej pozycji (viewX/viewY), bo jej opóźnienie
-      // powodowałoby nieprecyzyjne sterowanie przy płynnej kamerze.
       const cameraX = cameraReady ? targetViewX : viewX;
       const cameraY = cameraReady ? targetViewY : viewY;
       const cameraZoom = cameraReady ? targetViewZoom : viewZoom;
@@ -650,9 +884,6 @@
       ws.send(buf);
     }
 
-    // Ponawiaj cel ruchu, nawet jeśli kursor myszy pozostaje nieruchomy.
-    // Ponieważ kamera przesuwa się razem z graczem, cel w świecie gry
-    // również musi się przesuwać. Inaczej kulka dociera do starego punktu i staje.
     setInterval(sendTarget, 50);
 
     function sendSpawn(nick) {
@@ -678,9 +909,7 @@
         case 16: {
           const eatCount = view.getUint16(offset, true);
           offset += 2;
-          for (let i = 0; i < eatCount; i++) {
-            offset += 8;
-          }
+          for (let i = 0; i < eatCount; i++) offset += 8;
 
           while (true) {
             const id = view.getUint32(offset, true);
@@ -713,8 +942,6 @@
               name += String.fromCharCode(charCode);
             }
 
-            // Zachowaj wyswietlana pozycje pomiedzy aktualizacjami serwera.
-            // Bez tego kulki przeskakuja skokowo, gdy kamera jest plynna.
             const previousNode = nodes[id];
             nodes[id] = {
               id, x, y, size,
@@ -756,7 +983,6 @@
           offset += 4;
           targetViewZoom = view.getFloat32(offset, true) / 1.32;
 
-          // Pierwszy pakiet: bez animacji z (0, 0) do gracza.
           if (!cameraReady) {
             viewX = targetViewX;
             viewY = targetViewY;
@@ -779,8 +1005,6 @@
         }
 
         case 64: {
-          // Standardowy pakiet MultiOgarII: granice mapy jako 4 liczby Float64.
-          // Pozwala dostosowac minimape do innych rozmiarow map w trybach gry.
           if (view.byteLength - offset < 32) break;
           const minX = view.getFloat64(offset, true);
           const minY = view.getFloat64(offset + 8, true);
@@ -794,7 +1018,6 @@
         }
 
         case 99: {
-          // Wiadomość od gracza lub komunikat serwera.
           if (view.byteLength < 5) break;
           const flags = view.getUint8(offset++);
           const r = view.getUint8(offset++);
@@ -874,7 +1097,6 @@
       const mapH = mapBorder.maxY - mapBorder.minY;
       if (!(mapW > 0 && mapH > 0)) return;
 
-      // Zachowaj proporcje nawet przy prostokatnej mapie.
       const scale = Math.min((mw - 2 * padding) / mapW, (mh - 2 * padding) / mapH);
       const plotW = mapW * scale;
       const plotH = mapH * scale;
@@ -902,10 +1124,8 @@
       }
       minimapCtx.strokeStyle = "#6b8aaa";
       minimapCtx.lineWidth = 1.5;
-      minimapCtx.strokeRect(left, top, plotW, plotH); // Granica calej mapy.
+      minimapCtx.strokeRect(left, top, plotW, plotH);
 
-      // Serwer przesyla tylko obiekty w zasiegu widzenia gracza.
-      // Dlatego tutaj mozemy pokazac tylko wirusy znane klientowi.
       minimapCtx.fillStyle = "#42ec67";
       for (const node of Object.values(nodes)) {
         if (!node.isVirus) continue;
@@ -918,7 +1138,6 @@
         minimapCtx.fill();
       }
 
-      // Jedna kropka gracza nawet po podziale: srodek wazony masa kulek.
       let sumX = 0, sumY = 0, weightSum = 0;
       for (const id of myCellIds) {
         const node = nodes[id];
@@ -943,13 +1162,11 @@
     }
 
     function render(frameTime) {
-      // Animacja niezależna od FPS: kamera łagodnie podąża za serwerem.
       const deltaMs = lastCameraFrame === null
         ? 16.67
         : Math.min(Math.max(frameTime - lastCameraFrame, 0), 50);
       lastCameraFrame = frameTime;
 
-      // Wspolne tempo wygładzania ruchu kamery i kulek.
       const moveSmooth = 1 - Math.exp(-deltaMs / 95);
       if (cameraReady) {
         const zoomSmooth = 1 - Math.exp(-deltaMs / 220);
@@ -965,7 +1182,6 @@
       ctx.scale(viewZoom, viewZoom);
       ctx.translate(-viewX, -viewY);
 
-      // Siatka tła
       ctx.strokeStyle = "#141926";
       ctx.lineWidth = 1;
       const gridSize = 60;
@@ -986,17 +1202,9 @@
       ctx.stroke();
 
       let totalMass = 0;
-
-      // Sortowanie wszystkich encji od najmniejszej do największej (rosnąco)
-      // Dzięki temu mniejsza kulka rysuje się PIERWSZA (jest pod spodem), 
-      // a większy wirus lub gracz rysuje się NA NIEJ.
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
 
       for (const node of sortedNodes) {
-        // Interpoluj ruch obiektow w kazdej klatce zamiast rysowac je
-        // tylko w pozycjach z ostatniego pakietu sieciowego.
-        // Szybsza reakcja własnych kulek bez rezygnowania z wygładzania.
-        // Pozostałe obiekty pozostają wygładzane łagodniej.
         const nodeMoveSmooth = myCellIds.has(node.id)
           ? 1 - Math.exp(-deltaMs / 50)
           : 1 - Math.exp(-deltaMs / 120);
@@ -1014,6 +1222,21 @@
           ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
           ctx.fillStyle = node.color;
           ctx.fill();
+
+          // Renderowanie Skina Klanu
+          const isMyCell = myCellIds.has(node.id);
+          const skinImg = (isMyCell && currentClan && currentClan.skin_url)
+            ? getSkinImage(currentClan.skin_url)
+            : null;
+
+          if (skinImg && skinImg.complete && skinImg.naturalWidth !== 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(skinImg, drawX - drawSize, drawY - drawSize, drawSize * 2, drawSize * 2);
+            ctx.restore();
+          }
 
           if (node.size > 14) {
             ctx.lineWidth = Math.max(2, drawSize * 0.05);
@@ -1040,7 +1263,7 @@
             }
           }
 
-          if (myCellIds.has(node.id)) {
+          if (isMyCell) {
             totalMass += Math.round((node.size * node.size) / 100);
           }
         }
@@ -1064,9 +1287,9 @@
       const rank = document.getElementById("rankSelect").value;
 
       let finalNick = rawNick;
-      if (rank === "VIP") finalNick = `[VIP] ${rawNick}`;
-      else if (rank === "SVIP") finalNick = `[SVIP] ${rawNick}`;
-      else if (rank === "ADMIN") finalNick = `[ADMIN] ${rawNick}`;
+      if (rank === "VIP" && !rawNick.startsWith("[")) finalNick = `[VIP] ${rawNick}`;
+      else if (rank === "SVIP" && !rawNick.startsWith("[")) finalNick = `[SVIP] ${rawNick}`;
+      else if (rank === "ADMIN" && !rawNick.startsWith("[")) finalNick = `[ADMIN] ${rawNick}`;
 
       sendSpawn(finalNick);
     });
