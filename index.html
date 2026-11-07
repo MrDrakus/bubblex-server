@@ -197,13 +197,34 @@
       padding: 24px;
       flex-direction: column;
       justify-content: center;
-      gap: 12px;
+      gap: 10px;
       z-index: 25;
     }
     .sub-modal h3 {
       font-size: 18px;
       color: #00d2ff;
       font-weight: 800;
+    }
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .auth-tab-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid #23293d;
+      border-radius: 8px;
+      background: #090b12;
+      color: #7e8ea8;
+      cursor: pointer;
+    }
+    .auth-tab-btn.active {
+      color: #00d2ff;
+      border-color: #00d2ff;
+      background: #121828;
     }
     .sub-input {
       width: 100%;
@@ -408,16 +429,19 @@
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
       </div>
 
-      <!-- Okno Logowania / Rejestracji -->
+      <!-- Okno Logowania / Rejestracji z zakładkami -->
       <div class="sub-modal" id="authModal">
-        <h3>KONTO GRACZA</h3>
-        <input type="text" id="authUsername" class="sub-input" maxlength="15" placeholder="Twój nick w grze (do rejestracji)...">
-        <input type="email" id="authEmail" class="sub-input" placeholder="Twój e-mail...">
-        <input type="password" id="authPass" class="sub-input" placeholder="Hasło (min. 6 znaków)...">
-        <div style="display:flex; gap:8px;">
-          <button class="btn-small cyan" style="flex:1; padding:10px;" onclick="handleLogin()">Zaloguj</button>
-          <button class="btn-small" style="flex:1; padding:10px;" onclick="handleRegister()">Rejestracja</button>
+        <h3 id="authModalTitle">LOGOWANIE</h3>
+        <div class="auth-tabs">
+          <button class="auth-tab-btn active" id="tabLogin" onclick="switchAuthTab('login')">Logowanie</button>
+          <button class="auth-tab-btn" id="tabRegister" onclick="switchAuthTab('register')">Rejestracja</button>
         </div>
+
+        <input type="text" id="authUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
+        <input type="email" id="authEmail" class="sub-input" placeholder="Twój e-mail..." style="display: none;">
+        <input type="password" id="authPass" class="sub-input" placeholder="Hasło...">
+
+        <button class="btn-small cyan" id="authSubmitBtn" style="padding:10px; margin-top:4px;" onclick="handleAuthSubmit()">Zaloguj się</button>
         <button class="btn-small" onclick="closeModal('authModal')">Wróć</button>
       </div>
 
@@ -465,6 +489,7 @@
     let currentUser = null;
     let currentProfile = null;
     let currentClan = null;
+    let currentAuthMode = "login"; // 'login' lub 'register'
     const loadedSkins = {};
 
     function getSkinImage(url) {
@@ -480,13 +505,60 @@
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
-    async function handleLogin() {
-      const email = document.getElementById("authEmail").value.trim();
-      const password = document.getElementById("authPass").value.trim();
-      if (!email || !password) return alert("Uzupełnij email i hasło!");
+    function switchAuthTab(mode) {
+      currentAuthMode = mode;
+      const tabLogin = document.getElementById("tabLogin");
+      const tabRegister = document.getElementById("tabRegister");
+      const title = document.getElementById("authModalTitle");
+      const emailInput = document.getElementById("authEmail");
+      const submitBtn = document.getElementById("authSubmitBtn");
+      const userInput = document.getElementById("authUsername");
 
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return alert("Błąd logowania: " + error.message);
+      if (mode === "login") {
+        tabLogin.classList.add("active");
+        tabRegister.classList.remove("active");
+        title.textContent = "LOGOWANIE";
+        emailInput.style.display = "none";
+        userInput.placeholder = "Twój nick...";
+        submitBtn.textContent = "Zaloguj się";
+      } else {
+        tabRegister.classList.add("active");
+        tabLogin.classList.remove("active");
+        title.textContent = "REJESTRACJA";
+        emailInput.style.display = "block";
+        userInput.placeholder = "Wybierz nick w grze...";
+        submitBtn.textContent = "Zarejestruj konto";
+      }
+    }
+
+    function handleAuthSubmit() {
+      if (currentAuthMode === "login") handleLogin();
+      else handleRegister();
+    }
+
+    async function handleLogin() {
+      const username = document.getElementById("authUsername").value.trim();
+      const password = document.getElementById("authPass").value.trim();
+      if (!username || !password) return alert("Wpisz nick oraz hasło!");
+
+      // 1. Pobierz email powiązany z wpisanym nickiem z tabeli profiles
+      const { data: profile, error: fetchErr } = await sb
+        .from('profiles')
+        .select('email')
+        .ilike('username', username)
+        .maybeSingle();
+
+      if (fetchErr || !profile || !profile.email) {
+        return alert("Nie znaleziono gracza o nicku: " + username);
+      }
+
+      // 2. Zaloguj za pomocą powiązanego emaila i hasła
+      const { data, error } = await sb.auth.signInWithPassword({ 
+        email: profile.email, 
+        password 
+      });
+
+      if (error) return alert("Niepoprawne hasło lub błąd logowania!");
       currentUser = data.user;
       closeModal('authModal');
       await loadUserData();
@@ -498,7 +570,21 @@
       const password = document.getElementById("authPass").value.trim();
       
       if (!username || !email || !password) {
-        return alert("Uzupełnij nick, email oraz hasło!");
+        return alert("Do rejestracji wymagany jest nick, e-mail oraz hasło!");
+      }
+      if (password.length < 6) {
+        return alert("Hasło musi mieć co najmniej 6 znaków!");
+      }
+
+      // Sprawdź unikalność nicku
+      const { data: existingUser } = await sb
+        .from('profiles')
+        .select('username')
+        .ilike('username', username)
+        .maybeSingle();
+
+      if (existingUser) {
+        return alert("Ten nick jest już zajęty! Wybierz inny.");
       }
 
       const { error } = await sb.auth.signUp({ 
@@ -511,6 +597,7 @@
       
       if (error) return alert("Błąd rejestracji: " + error.message);
       alert(`Konto dla gracza ${username} zostało utworzone! Możesz się teraz zalogować.`);
+      switchAuthTab('login');
     }
 
     async function logoutUser() {
