@@ -51,7 +51,7 @@
       margin-bottom: 14px;
     }
 
-    /* Pasek konta i klanu */
+    /* Pasek konta i klanu z LVL */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -70,6 +70,16 @@
       gap: 2px;
     }
     .user-info strong { color: #00d2ff; }
+    .badge-lvl {
+      display: inline-block;
+      background: linear-gradient(135deg, #ff0055, #ff5500);
+      color: #fff;
+      font-weight: 800;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      margin-left: 4px;
+    }
     .user-pts { color: #ffd700; font-weight: 700; }
     .auth-btn-group {
       display: flex;
@@ -187,7 +197,6 @@
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
-    /* Dolny pasek logowania i rejestracji */
     .bottom-auth-bar {
       display: flex;
       gap: 10px;
@@ -221,7 +230,6 @@
       color: #06080f;
     }
 
-    /* Modale */
     .sub-modal {
       display: none;
       position: absolute;
@@ -397,11 +405,14 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Panel Konta Gracza -->
+      <!-- Panel Konta Gracza z LVL -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
-          <span id="userPointsLabel" class="user-pts">Punkty: 0</span>
+          <div>
+            <span id="userPointsLabel" class="user-pts">Punkty: 0</span>
+            <span id="userLevelBadge" class="badge-lvl" style="display:none;">LVL 1</span>
+          </div>
         </div>
         <div class="auth-btn-group">
           <button class="btn-small" id="btnOpenClan" onclick="openModal('clanModal')" style="display: none;">Klan</button>
@@ -441,13 +452,12 @@
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
       </div>
 
-      <!-- Osobne przyciski na dole karty menu -->
       <div class="bottom-auth-bar" id="bottomAuthBar">
         <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Zaloguj się</button>
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Załóż konto</button>
       </div>
 
-      <!-- 1. Modal Logowania (2 POLA) -->
+      <!-- Modal Logowania (2 POLA) -->
       <div class="sub-modal" id="loginModal">
         <h3>LOGOWANIE</h3>
         <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
@@ -456,7 +466,7 @@
         <button class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
       </div>
 
-      <!-- 2. Modal Rejestracji (3 POLA) -->
+      <!-- Modal Rejestracji (3 POLA) -->
       <div class="sub-modal" id="registerModal">
         <h3>REJESTRACJA</h3>
         <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Twój nick w grze...">
@@ -466,7 +476,7 @@
         <button class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
       </div>
 
-      <!-- 3. Modal Zarządzania Klanem & Wgrywania Skina -->
+      <!-- Modal Zarządzania Klanem -->
       <div class="sub-modal" id="clanModal">
         <h3>ZARZĄDZANIE KLANEM</h3>
         <input type="text" id="clanNameInput" class="sub-input" maxlength="20" placeholder="Nazwa klanu (np. Smoki)...">
@@ -502,7 +512,6 @@
   <canvas id="cvs"></canvas>
 
   <script>
-    // Inicjalizacja Supabase
     const SUPABASE_URL = "https://dmwhuuoedtsqelkbypii.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_hI3Djw5k0CjO_Qj_O7MZ7Q_B406QGK_";
     const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -525,7 +534,6 @@
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
-    // Logowanie - 2 pola (Nick + Hasło)
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
@@ -552,7 +560,6 @@
       await loadUserData();
     }
 
-    // Rejestracja - 3 pola (Nick + E-mail + Hasło)
     async function handleRegister() {
       const username = document.getElementById("regUsername").value.trim();
       const email = document.getElementById("regEmail").value.trim();
@@ -584,7 +591,7 @@
       });
       
       if (error) return alert("Błąd rejestracji: " + error.message);
-      alert(`Konto dla gracza ${username} zostało pomyślnie utworzone! Możesz się teraz zalogować.`);
+      alert(`Konto dla gracza ${username} (LVL 1) zostało utworzone! Możesz się teraz zalogować.`);
       closeModal('registerModal');
       openModal('loginModal');
     }
@@ -619,19 +626,24 @@
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
+      const lvlBadge = document.getElementById("userLevelBadge");
       const btnOpenClan = document.getElementById("btnOpenClan");
       const btnLogout = document.getElementById("btnLogout");
       const bottomAuthBar = document.getElementById("bottomAuthBar");
 
       if (currentUser && currentProfile) {
+        const lvl = currentProfile.level || 1;
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
         ptsLabel.textContent = `Punkty: ${currentProfile.points}`;
+        lvlBadge.textContent = `LVL ${lvl}`;
+        lvlBadge.style.display = "inline-block";
         btnOpenClan.style.display = "block";
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
         ptsLabel.textContent = `Punkty: 0`;
+        lvlBadge.style.display = "none";
         btnOpenClan.style.display = "none";
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
@@ -685,7 +697,6 @@
       }
     }
 
-    // Sprawdzenie aktywnej sesji po odświeżeniu
     window.addEventListener("DOMContentLoaded", async () => {
       if (!sb) return;
       const { data: { session } } = await sb.auth.getSession();
@@ -1209,8 +1220,10 @@
         minimapCtx.lineTo(left + plotW, gy);
         minimapCtx.stroke();
       }
-      minimapCtx.strokeStyle = "#6b8aaa";
-      minimapCtx.lineWidth = 1.5;
+
+      // Czerwona krawędź na minimapie
+      minimapCtx.strokeStyle = "#ff2244";
+      minimapCtx.lineWidth = 2;
       minimapCtx.strokeRect(left, top, plotW, plotH);
 
       minimapCtx.fillStyle = "#42ec67";
@@ -1269,6 +1282,7 @@
       ctx.scale(viewZoom, viewZoom);
       ctx.translate(-viewX, -viewY);
 
+      // Siatka tła
       ctx.strokeStyle = "#141926";
       ctx.lineWidth = 1;
       const gridSize = 60;
@@ -1287,6 +1301,23 @@
         ctx.lineTo(endX, y);
       }
       ctx.stroke();
+
+      // ================= CZERWONA LINIA BRZEGOWA MAPY =================
+      const bW = mapBorder.maxX - mapBorder.minX;
+      const bH = mapBorder.maxY - mapBorder.minY;
+      
+      ctx.save();
+      ctx.strokeStyle = "#ff2244";
+      ctx.lineWidth = 14;
+      ctx.shadowColor = "#ff0033";
+      ctx.shadowBlur = 24;
+      ctx.strokeRect(mapBorder.minX, mapBorder.minY, bW, bH);
+      
+      ctx.strokeStyle = "rgba(255, 60, 90, 0.4)";
+      ctx.lineWidth = 32;
+      ctx.strokeRect(mapBorder.minX, mapBorder.minY, bW, bH);
+      ctx.restore();
+      // ================================================================
 
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
