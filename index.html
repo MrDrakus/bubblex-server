@@ -187,7 +187,41 @@
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
-    /* Modale Auth & Klan */
+    /* Dolny pasek logowania i rejestracji */
+    .bottom-auth-bar {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .btn-bottom-auth {
+      flex: 1;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-login-bottom {
+      background: #141b2c;
+      border: 1px solid #233454;
+      color: #00d2ff;
+    }
+    .btn-login-bottom:hover {
+      background: #1d2842;
+      border-color: #00d2ff;
+    }
+    .btn-reg-bottom {
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid #00d2ff;
+      color: #ffffff;
+    }
+    .btn-reg-bottom:hover {
+      background: #00d2ff;
+      color: #06080f;
+    }
+
+    /* Modale */
     .sub-modal {
       display: none;
       position: absolute;
@@ -204,27 +238,6 @@
       font-size: 18px;
       color: #00d2ff;
       font-weight: 800;
-    }
-    .auth-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    .auth-tab-btn {
-      flex: 1;
-      padding: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      border: 1px solid #23293d;
-      border-radius: 8px;
-      background: #090b12;
-      color: #7e8ea8;
-      cursor: pointer;
-    }
-    .auth-tab-btn.active {
-      color: #00d2ff;
-      border-color: #00d2ff;
-      background: #121828;
     }
     .sub-input {
       width: 100%;
@@ -391,7 +404,6 @@
           <span id="userPointsLabel" class="user-pts">Punkty: 0</span>
         </div>
         <div class="auth-btn-group">
-          <button class="btn-small cyan" id="btnOpenAuth" onclick="openModal('authModal')">Zaloguj / Rejestracja</button>
           <button class="btn-small" id="btnOpenClan" onclick="openModal('clanModal')" style="display: none;">Klan</button>
           <button class="btn-small" id="btnLogout" onclick="logoutUser()" style="display: none;">Wyloguj</button>
         </div>
@@ -429,23 +441,32 @@
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
       </div>
 
-      <!-- Okno Logowania / Rejestracji z zakładkami -->
-      <div class="sub-modal" id="authModal">
-        <h3 id="authModalTitle">LOGOWANIE</h3>
-        <div class="auth-tabs">
-          <button class="auth-tab-btn active" id="tabLogin" onclick="switchAuthTab('login')">Logowanie</button>
-          <button class="auth-tab-btn" id="tabRegister" onclick="switchAuthTab('register')">Rejestracja</button>
-        </div>
-
-        <input type="text" id="authUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
-        <input type="email" id="authEmail" class="sub-input" placeholder="Twój e-mail..." style="display: none;">
-        <input type="password" id="authPass" class="sub-input" placeholder="Hasło...">
-
-        <button class="btn-small cyan" id="authSubmitBtn" style="padding:10px; margin-top:4px;" onclick="handleAuthSubmit()">Zaloguj się</button>
-        <button class="btn-small" onclick="closeModal('authModal')">Wróć</button>
+      <!-- Osobne przyciski na dole karty menu -->
+      <div class="bottom-auth-bar" id="bottomAuthBar">
+        <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Zaloguj się</button>
+        <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Załóż konto</button>
       </div>
 
-      <!-- Okno Zakładania Klanu & Wgrywania Skina -->
+      <!-- 1. Modal Logowania (2 POLA) -->
+      <div class="sub-modal" id="loginModal">
+        <h3>LOGOWANIE</h3>
+        <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
+        <input type="password" id="loginPassword" class="sub-input" placeholder="Hasło...">
+        <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleLogin()">Zaloguj się</button>
+        <button class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
+      </div>
+
+      <!-- 2. Modal Rejestracji (3 POLA) -->
+      <div class="sub-modal" id="registerModal">
+        <h3>REJESTRACJA</h3>
+        <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Twój nick w grze...">
+        <input type="email" id="regEmail" class="sub-input" placeholder="Twój e-mail...">
+        <input type="password" id="regPassword" class="sub-input" placeholder="Hasło (min. 6 znaków)...">
+        <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleRegister()">Załóż konto</button>
+        <button class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
+      </div>
+
+      <!-- 3. Modal Zarządzania Klanem & Wgrywania Skina -->
       <div class="sub-modal" id="clanModal">
         <h3>ZARZĄDZANIE KLANEM</h3>
         <input type="text" id="clanNameInput" class="sub-input" maxlength="20" placeholder="Nazwa klanu (np. Smoki)...">
@@ -489,7 +510,6 @@
     let currentUser = null;
     let currentProfile = null;
     let currentClan = null;
-    let currentAuthMode = "login"; // 'login' lub 'register'
     const loadedSkins = {};
 
     function getSkinImage(url) {
@@ -505,43 +525,12 @@
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
-    function switchAuthTab(mode) {
-      currentAuthMode = mode;
-      const tabLogin = document.getElementById("tabLogin");
-      const tabRegister = document.getElementById("tabRegister");
-      const title = document.getElementById("authModalTitle");
-      const emailInput = document.getElementById("authEmail");
-      const submitBtn = document.getElementById("authSubmitBtn");
-      const userInput = document.getElementById("authUsername");
-
-      if (mode === "login") {
-        tabLogin.classList.add("active");
-        tabRegister.classList.remove("active");
-        title.textContent = "LOGOWANIE";
-        emailInput.style.display = "none";
-        userInput.placeholder = "Twój nick...";
-        submitBtn.textContent = "Zaloguj się";
-      } else {
-        tabRegister.classList.add("active");
-        tabLogin.classList.remove("active");
-        title.textContent = "REJESTRACJA";
-        emailInput.style.display = "block";
-        userInput.placeholder = "Wybierz nick w grze...";
-        submitBtn.textContent = "Zarejestruj konto";
-      }
-    }
-
-    function handleAuthSubmit() {
-      if (currentAuthMode === "login") handleLogin();
-      else handleRegister();
-    }
-
+    // Logowanie - 2 pola (Nick + Hasło)
     async function handleLogin() {
-      const username = document.getElementById("authUsername").value.trim();
-      const password = document.getElementById("authPass").value.trim();
-      if (!username || !password) return alert("Wpisz nick oraz hasło!");
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+      if (!username || !password) return alert("Wpisz swój nick oraz hasło!");
 
-      // 1. Pobierz email powiązany z wpisanym nickiem z tabeli profiles
       const { data: profile, error: fetchErr } = await sb
         .from('profiles')
         .select('email')
@@ -552,7 +541,6 @@
         return alert("Nie znaleziono gracza o nicku: " + username);
       }
 
-      // 2. Zaloguj za pomocą powiązanego emaila i hasła
       const { data, error } = await sb.auth.signInWithPassword({ 
         email: profile.email, 
         password 
@@ -560,14 +548,15 @@
 
       if (error) return alert("Niepoprawne hasło lub błąd logowania!");
       currentUser = data.user;
-      closeModal('authModal');
+      closeModal('loginModal');
       await loadUserData();
     }
 
+    // Rejestracja - 3 pola (Nick + E-mail + Hasło)
     async function handleRegister() {
-      const username = document.getElementById("authUsername").value.trim();
-      const email = document.getElementById("authEmail").value.trim();
-      const password = document.getElementById("authPass").value.trim();
+      const username = document.getElementById("regUsername").value.trim();
+      const email = document.getElementById("regEmail").value.trim();
+      const password = document.getElementById("regPassword").value.trim();
       
       if (!username || !email || !password) {
         return alert("Do rejestracji wymagany jest nick, e-mail oraz hasło!");
@@ -576,7 +565,6 @@
         return alert("Hasło musi mieć co najmniej 6 znaków!");
       }
 
-      // Sprawdź unikalność nicku
       const { data: existingUser } = await sb
         .from('profiles')
         .select('username')
@@ -596,8 +584,9 @@
       });
       
       if (error) return alert("Błąd rejestracji: " + error.message);
-      alert(`Konto dla gracza ${username} zostało utworzone! Możesz się teraz zalogować.`);
-      switchAuthTab('login');
+      alert(`Konto dla gracza ${username} zostało pomyślnie utworzone! Możesz się teraz zalogować.`);
+      closeModal('registerModal');
+      openModal('loginModal');
     }
 
     async function logoutUser() {
@@ -630,22 +619,22 @@
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
-      const btnOpenAuth = document.getElementById("btnOpenAuth");
       const btnOpenClan = document.getElementById("btnOpenClan");
       const btnLogout = document.getElementById("btnLogout");
+      const bottomAuthBar = document.getElementById("bottomAuthBar");
 
       if (currentUser && currentProfile) {
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
         ptsLabel.textContent = `Punkty: ${currentProfile.points}`;
-        btnOpenAuth.style.display = "none";
         btnOpenClan.style.display = "block";
         btnLogout.style.display = "block";
+        bottomAuthBar.style.display = "none";
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
         ptsLabel.textContent = `Punkty: 0`;
-        btnOpenAuth.style.display = "block";
         btnOpenClan.style.display = "none";
         btnLogout.style.display = "none";
+        bottomAuthBar.style.display = "flex";
       }
     }
 
@@ -1321,7 +1310,6 @@
           ctx.fillStyle = node.color;
           ctx.fill();
 
-          // Renderowanie Skina Klanu
           const isMyCell = myCellIds.has(node.id);
           const skinImg = (isMyCell && currentClan && currentClan.skin_url)
             ? getSkinImage(currentClan.skin_url)
