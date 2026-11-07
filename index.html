@@ -411,6 +411,7 @@
       <!-- Okno Logowania / Rejestracji -->
       <div class="sub-modal" id="authModal">
         <h3>KONTO GRACZA</h3>
+        <input type="text" id="authUsername" class="sub-input" maxlength="15" placeholder="Twój nick w grze (do rejestracji)...">
         <input type="email" id="authEmail" class="sub-input" placeholder="Twój e-mail...">
         <input type="password" id="authPass" class="sub-input" placeholder="Hasło (min. 6 znaków)...">
         <div style="display:flex; gap:8px;">
@@ -457,9 +458,8 @@
 
   <script>
     // Inicjalizacja Supabase
-    // Podmień poniższe dwa parametry na wartości z Twojego panelu Supabase (Project Settings -> API)
-    const SUPABASE_URL = "https://twoj-projekt.supabase.co";
-    const SUPABASE_ANON_KEY = "twoj-klucz-anon";
+    const SUPABASE_URL = "https://dmwhuuoedtsqelkbypii.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_hI3Djw5k0CjO_Qj_O7MZ7Q_B406QGK_";
     const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
     let currentUser = null;
@@ -493,13 +493,24 @@
     }
 
     async function handleRegister() {
+      const username = document.getElementById("authUsername").value.trim();
       const email = document.getElementById("authEmail").value.trim();
       const password = document.getElementById("authPass").value.trim();
-      if (!email || !password) return alert("Uzupełnij email i hasło!");
+      
+      if (!username || !email || !password) {
+        return alert("Uzupełnij nick, email oraz hasło!");
+      }
 
-      const { error } = await sb.auth.signUp({ email, password });
+      const { error } = await sb.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: { username }
+        }
+      });
+      
       if (error) return alert("Błąd rejestracji: " + error.message);
-      alert("Konto utworzone! Możesz się teraz zalogować.");
+      alert(`Konto dla gracza ${username} zostało utworzone! Możesz się teraz zalogować.`);
     }
 
     async function logoutUser() {
