@@ -56,7 +56,7 @@
       margin-bottom: 12px;
     }
 
-    /* Pasek profilu gracza z punktami po prawej stronie */
+    /* Pasek profilu gracza */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -107,7 +107,18 @@
     .btn-small.cyan { background: #00d2ff; color: #050608; border: none; }
     .btn-small.cyan:hover { background: #33dcff; }
 
-    /* Kafelki z poziomami dla każdego trybu */
+    /* Nagłówek i Kafelki Poziomów */
+    .section-label {
+      font-size: 11px;
+      color: #7e8ea8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: block;
+      text-align: left;
+      margin-bottom: 5px;
+    }
+
     .mode-lvls-grid {
       display: none;
       grid-template-columns: repeat(4, 1fr);
@@ -134,7 +145,7 @@
       margin-bottom: 2px;
     }
     .mode-lvl-val {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       color: #00d2ff;
     }
@@ -142,15 +153,6 @@
     .row-inputs {
       margin-bottom: 12px;
       text-align: left;
-    }
-    .input-label {
-      font-size: 11px;
-      color: #7e8ea8;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      display: block;
-      margin-bottom: 5px;
     }
     .input-nick {
       width: 100%;
@@ -165,7 +167,7 @@
     }
     .input-nick:focus { border-color: #00d2ff; }
 
-    /* Wybór koloru kulki */
+    /* Pasek wyboru koloru kulki */
     .color-picker-box {
       display: flex;
       align-items: center;
@@ -175,39 +177,75 @@
       padding: 8px 14px;
       border-radius: 8px;
       margin-bottom: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .color-picker-box:hover {
+      border-color: #00d2ff;
     }
     .color-picker-box span {
       font-size: 12px;
       font-weight: 600;
       color: #cbd5e1;
     }
-    .input-color {
-      -webkit-appearance: none;
-      border: none;
-      width: 38px;
-      height: 30px;
+    .color-preview-btn {
+      width: 44px;
+      height: 28px;
       border-radius: 6px;
+      border: 2px solid #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
       cursor: pointer;
-      background: none;
     }
-    .input-color::-webkit-color-swatch-wrapper { padding: 0; }
-    .input-color::-webkit-color-swatch {
-      border: 1px solid #3b4b6b;
-      border-radius: 6px;
+
+    /* Siatka palety kolorów w modalu */
+    .palette-group-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #7e8ea8;
+      font-weight: 700;
+      text-align: left;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+    .colors-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .color-tile {
+      height: 38px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-tile:hover {
+      transform: scale(1.06);
+    }
+    .color-tile.selected {
+      border-color: #ffffff;
+      box-shadow: 0 0 12px rgba(255,255,255,0.7);
+    }
+    .color-tile.locked::after {
+      content: "🔒 50p";
+      background: rgba(0, 0, 0, 0.7);
+      color: #ffd700;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 1px 4px;
+      border-radius: 4px;
     }
 
     .mode-container {
       margin-bottom: 14px;
       text-align: left;
-    }
-    .mode-label {
-      display: block;
-      font-size: 11px;
-      color: #7e8ea8;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      margin-bottom: 5px;
     }
     .select-mode {
       width: 100%;
@@ -263,7 +301,6 @@
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
-    /* Dolne przyciski */
     .bottom-auth-bar {
       display: flex;
       gap: 10px;
@@ -297,7 +334,6 @@
       color: #06080f;
     }
 
-    /* Modale */
     .sub-modal {
       display: none;
       position: absolute;
@@ -332,7 +368,6 @@
       text-align: left;
     }
 
-    /* Modal statystyk po zgonie */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -372,7 +407,6 @@
       z-index: 10;
     }
 
-    /* Pasek Postępu Poziomu na dole ekranu */
     #xp-hud {
       position: absolute;
       bottom: 18px;
@@ -551,7 +585,7 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Pasek profilu gracza z punktami w pigułce -->
+      <!-- Pasek profilu gracza z punktami po prawej stronie -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
@@ -563,30 +597,31 @@
         </div>
       </div>
 
-      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB (zastępują stary pasek punktów) -->
+      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB Z ETYKIETĄ -->
+      <span class="section-label" id="modeLvlsLabel" style="display:none;">Poziomy trybów (LVL):</span>
       <div class="mode-lvls-grid" id="modeLvlsGrid">
         <div class="mode-lvl-card active" id="cardLvlFfa">
           <div class="mode-lvl-name">FFA</div>
-          <div class="mode-lvl-val" id="valLvlFfa">(1)</div>
+          <div class="mode-lvl-val" id="valLvlFfa">LVL (1)</div>
         </div>
         <div class="mode-lvl-card" id="cardLvlMegasplit">
           <div class="mode-lvl-name">MegaSplit</div>
-          <div class="mode-lvl-val" id="valLvlMegasplit">(1)</div>
+          <div class="mode-lvl-val" id="valLvlMegasplit">LVL (1)</div>
         </div>
         <div class="mode-lvl-card" id="cardLvlHardcore">
           <div class="mode-lvl-name">Hardcore</div>
-          <div class="mode-lvl-val" id="valLvlHardcore">(1)</div>
+          <div class="mode-lvl-val" id="valLvlHardcore">LVL (1)</div>
         </div>
         <div class="mode-lvl-card" id="cardLvlExperimental">
           <div class="mode-lvl-name">Exp</div>
-          <div class="mode-lvl-val" id="valLvlExperimental">(1)</div>
+          <div class="mode-lvl-val" id="valLvlExperimental">LVL (1)</div>
         </div>
       </div>
 
       <div id="server-status" class="status-connecting">Łączenie z serwerem gry...</div>
 
       <div class="mode-container">
-        <span class="mode-label">Tryb rozgrywki</span>
+        <span class="section-label">Tryb rozgrywki</span>
         <select class="select-mode" id="modeSelect" onchange="switchMode(this.value)">
           <option value="wss://bubblex-server.onrender.com" data-key="ffa">Tryb FFA (Standard)</option>
           <option value="wss://bubblex-megasplit.onrender.com" data-key="megasplit">MegaSplit (Instant Merge / 64 Kulek)</option>
@@ -597,14 +632,14 @@
 
       <!-- Widoczne tylko dla Gościa -->
       <div class="row-inputs" id="guestNickBox">
-        <span class="input-label">Wpisz nick jako gość</span>
+        <span class="section-label">Wpisz nick jako gość</span>
         <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
       </div>
 
-      <!-- Widoczne tylko dla zalogowanego gracza: Wybór koloru kulki -->
-      <div class="color-picker-box" id="userColorBox" style="display: none;">
-        <span>Twój własny kolor kulki:</span>
-        <input type="color" id="playerColorInput" class="input-color" value="#00d2ff">
+      <!-- Wybór koloru kulki z paletą -->
+      <div class="color-picker-box" id="userColorBox" style="display: none;" onclick="openModal('colorModal')">
+        <span>Twój kolor kulki (kliknij by zmienić):</span>
+        <div class="color-preview-btn" id="currentColorPreview" style="background: #00d2ff;"></div>
       </div>
 
       <div class="action-row">
@@ -617,10 +652,21 @@
         <strong>Enter</strong>: Czat (Odblokowanie: 10 pkt) | <strong>Esc</strong>: Zamknij czat
       </div>
 
-      <!-- Dwa osobne przyciski na dole -->
       <div class="bottom-auth-bar" id="bottomAuthBar">
         <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Logowanie</button>
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
+      </div>
+
+      <!-- Modal Palety Kolorów (Podstawowe + Premium za punkty) -->
+      <div class="sub-modal" id="colorModal">
+        <h3>WYBIERZ KOLOR KULKI</h3>
+        <div class="palette-group-title">Podstawowe (Darmowe):</div>
+        <div class="colors-grid" id="freeColorsGrid"></div>
+
+        <div class="palette-group-title">Ciekawe / Premium (Koszt: 50 pkt na stałe):</div>
+        <div class="colors-grid" id="premiumColorsGrid"></div>
+
+        <button class="btn-small cyan" style="padding:10px; margin-top:8px;" onclick="closeModal('colorModal')">Gotowe</button>
       </div>
 
       <!-- Modal Logowania -->
@@ -723,6 +769,24 @@
     let currentClan = null;
     const loadedSkins = {};
 
+    // 10 podstawowych darmowych kolorów
+    const FREE_COLORS = [
+      "#00d2ff", "#ff2a55", "#00ff88", "#ffd700", "#a855f7",
+      "#ff8800", "#00e5ff", "#e0e7ff", "#22c55e", "#ec4899"
+    ];
+
+    // 6 ciekawych kolorów premium (koszt: 50 pkt każdy)
+    const PREMIUM_COLORS = [
+      { hex: "#ff007f", name: "Neon Magenta" },
+      { hex: "#7928ca", name: "Deep Violet" },
+      { hex: "#ff4500", name: "Lava Orange" },
+      { hex: "#10b981", name: "Emerald" },
+      { hex: "#fbbf24", name: "Pure Gold" },
+      { hex: "#0f172a", name: "Obsidian" }
+    ];
+
+    let chosenPlayerColor = localStorage.getItem("bubblex_color") || "#00d2ff";
+
     try {
       const cached = localStorage.getItem("bubblex_profile");
       if (cached) currentProfile = JSON.parse(cached);
@@ -730,7 +794,6 @@
 
     let currentModeKey = "ffa";
 
-    // Przeliczniki trudności zdobywania XP w zależności od trybu
     const MODE_SETTINGS = {
       ffa:          { name: "FFA", baseTarget: 100, pow: 1.6, mult: 1.0 },
       megasplit:    { name: "MegaSplit", baseTarget: 500, pow: 1.7, mult: 0.35 },
@@ -759,12 +822,108 @@
       return loadedSkins[url];
     }
 
-    function openModal(id) { document.getElementById(id).style.display = "flex"; }
+    function openModal(id) { 
+      document.getElementById(id).style.display = "flex"; 
+      if (id === 'colorModal') renderColorPalette();
+    }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
     function closeStatsAndShowMenu() {
       document.getElementById("statsOverlay").style.display = "none";
       document.getElementById("menuOverlay").style.display = "flex";
+    }
+
+    // Renderowanie palety kolorów (darmowe + premium)
+    function renderColorPalette() {
+      const freeGrid = document.getElementById("freeColorsGrid");
+      const premGrid = document.getElementById("premiumColorsGrid");
+      freeGrid.innerHTML = "";
+      premGrid.innerHTML = "";
+
+      const unlocked = currentProfile?.unlocked_colors || [];
+
+      FREE_COLORS.forEach(c => {
+        const tile = document.createElement("div");
+        tile.className = "color-tile" + (chosenPlayerColor.toLowerCase() === c.toLowerCase() ? " selected" : "");
+        tile.style.backgroundColor = c;
+        tile.onclick = () => selectColor(c);
+        freeGrid.appendChild(tile);
+      });
+
+      PREMIUM_COLORS.forEach(item => {
+        const isUnlocked = unlocked.includes(item.hex);
+        const tile = document.createElement("div");
+        tile.className = "color-tile" + 
+          (chosenPlayerColor.toLowerCase() === item.hex.toLowerCase() ? " selected" : "") +
+          (!isUnlocked ? " locked" : "");
+        tile.style.backgroundColor = item.hex;
+        tile.title = item.name + (!isUnlocked ? " (Koszt: 50 pkt)" : "");
+        tile.onclick = () => {
+          if (isUnlocked) {
+            selectColor(item.hex);
+          } else {
+            buyPremiumColor(item.hex, item.name);
+          }
+        };
+        premGrid.appendChild(tile);
+      });
+    }
+
+    async function selectColor(colorHex) {
+      chosenPlayerColor = colorHex;
+      localStorage.setItem("bubblex_color", colorHex);
+      document.getElementById("currentColorPreview").style.backgroundColor = colorHex;
+
+      if (currentProfile) {
+        currentProfile.selected_color = colorHex;
+        try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
+      }
+
+      if (currentUser && sb) {
+        sb.from('profiles').update({ selected_color: colorHex }).eq('id', currentUser.id).then();
+      }
+      renderColorPalette();
+    }
+
+    async function buyPremiumColor(colorHex, colorName) {
+      if (!currentProfile || !currentUser) {
+        return alert("Musisz być zalogowany, aby kupować kolory!");
+      }
+      if ((currentProfile.points || 0) < 50) {
+        return alert(`Masz za mało punktów! Ten kolor kosztuje 50 punktów (Twój stan: ${currentProfile.points || 0} pkt).`);
+      }
+
+      const wantBuy = confirm(`Czy chcesz odblokować unikalny kolor "${colorName}" na stałe za 50 punktów?`);
+      if (!wantBuy) return;
+
+      const newPts = currentProfile.points - 50;
+      const updatedUnlocked = [...(currentProfile.unlocked_colors || []), colorHex];
+
+      const { error } = await sb
+        .from('profiles')
+        .update({ 
+          points: newPts, 
+          unlocked_colors: updatedUnlocked,
+          selected_color: colorHex 
+        })
+        .eq('id', currentUser.id);
+
+      if (error) return alert("Błąd zakupu koloru: " + error.message);
+
+      currentProfile.points = newPts;
+      currentProfile.unlocked_colors = updatedUnlocked;
+      currentProfile.selected_color = colorHex;
+      chosenPlayerColor = colorHex;
+
+      try {
+        localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
+        localStorage.setItem("bubblex_color", colorHex);
+      } catch(e) {}
+
+      document.getElementById("currentColorPreview").style.backgroundColor = colorHex;
+      updateUserUI();
+      renderColorPalette();
+      alert(`Kolor "${colorName}" został odblokowany i wybrany!`);
     }
 
     async function handleLogin() {
@@ -792,9 +951,13 @@
       currentUser = authData.user;
       currentProfile = profile;
 
-      try {
-        localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
-      } catch(e) {}
+      if (profile.selected_color) {
+        chosenPlayerColor = profile.selected_color;
+        localStorage.setItem("bubblex_color", chosenPlayerColor);
+        document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
+      }
+
+      try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
 
       closeModal('loginModal');
       document.getElementById("loginPassword").value = "";
@@ -866,6 +1029,11 @@
 
         if (profile) {
           currentProfile = profile;
+          if (profile.selected_color) {
+            chosenPlayerColor = profile.selected_color;
+            localStorage.setItem("bubblex_color", chosenPlayerColor);
+            document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
+          }
           try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
 
           if (profile.clan_id) {
@@ -893,6 +1061,7 @@
       const guestNickBox = document.getElementById("guestNickBox");
       const userColorBox = document.getElementById("userColorBox");
       const modeLvlsGrid = document.getElementById("modeLvlsGrid");
+      const modeLvlsLabel = document.getElementById("modeLvlsLabel");
 
       if (currentProfile && currentProfile.username) {
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
@@ -905,12 +1074,14 @@
         guestNickBox.style.display = "none";
         userColorBox.style.display = "flex";
         modeLvlsGrid.style.display = "grid";
+        modeLvlsLabel.style.display = "block";
 
-        // Aktualizacja kafelków poziomów
-        document.getElementById("valLvlFfa").textContent = `(${currentProfile.level_ffa || 1})`;
-        document.getElementById("valLvlMegasplit").textContent = `(${currentProfile.level_megasplit || 1})`;
-        document.getElementById("valLvlHardcore").textContent = `(${currentProfile.level_hardcore || 1})`;
-        document.getElementById("valLvlExperimental").textContent = `(${currentProfile.level_experimental || 1})`;
+        document.getElementById("valLvlFfa").textContent = `LVL (${currentProfile.level_ffa || 1})`;
+        document.getElementById("valLvlMegasplit").textContent = `LVL (${currentProfile.level_megasplit || 1})`;
+        document.getElementById("valLvlHardcore").textContent = `LVL (${currentProfile.level_hardcore || 1})`;
+        document.getElementById("valLvlExperimental").textContent = `LVL (${currentProfile.level_experimental || 1})`;
+
+        document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
 
         highlightActiveModeCard();
       } else {
@@ -922,6 +1093,7 @@
         guestNickBox.style.display = "block";
         userColorBox.style.display = "none";
         modeLvlsGrid.style.display = "none";
+        modeLvlsLabel.style.display = "none";
         document.getElementById("nick").value = "";
       }
     }
@@ -937,7 +1109,6 @@
       });
     }
 
-    // Dodawanie zdobytej masy do XP konkretnego trybu
     function addGainedMassToXp(currentMass) {
       if (!isAlive || !currentProfile) return;
 
@@ -975,7 +1146,6 @@
       }
       lastPlayerMass = currentMass;
 
-      // Aktualizacja dolnego HUD
       const lvl = currentProfile[lvlProp] || 1;
       const currentXp = currentProfile[xpProp] || 0;
       const targetXp = getRequiredXpForMode(currentModeKey, lvl);
@@ -1069,6 +1239,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
+      document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
       updateUserUI();
 
       if (!sb) return;
@@ -1742,7 +1913,6 @@
 
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
-      const chosenColor = document.getElementById("playerColorInput")?.value || "#00d2ff";
 
       for (const node of sortedNodes) {
         const nodeMoveSmooth = myCellIds.has(node.id)
@@ -1762,7 +1932,7 @@
           ctx.beginPath();
           ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
           
-          ctx.fillStyle = (isMyCell && currentProfile) ? chosenColor : node.color;
+          ctx.fillStyle = (isMyCell && currentProfile) ? chosenPlayerColor : node.color;
           ctx.fill();
 
           const skinImg = (isMyCell && currentClan && currentClan.skin_url)
