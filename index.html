@@ -640,9 +640,9 @@
         <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
       </div>
 
-      <!-- Wybór koloru kulki -->
+      <!-- Wybór koloru kulki: tylko "Twój kolor:" -->
       <div class="color-picker-box" id="userColorBox" style="display: none;" onclick="openModal('colorModal')">
-        <span>Twój kolor / deseń kulki:</span>
+        <span>Twój kolor:</span>
         <div class="color-preview-btn" id="currentColorPreview" style="background: #ff2233;"></div>
       </div>
 
@@ -661,17 +661,17 @@
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
-      <!-- Modal Palety Kolorów (Precyzyjny podział pionowy) -->
+      <!-- Modal Palety Kolorów (Czyste nagłówki bez nawiasów) -->
       <div class="sub-modal" id="colorModal" style="max-height: 92vh; overflow-y: auto;">
         <h3>WYBIERZ KOLOR LUB WZÓR</h3>
         
         <div class="palette-group-title">DARMOWE:</div>
         <div class="colors-grid-6" id="gridFree"></div>
 
-        <div class="palette-group-title">ZA 100 PUNKTÓW (JASNE I CIEMNE ODCIENIE PIONOWO):</div>
+        <div class="palette-group-title">ZA 100 PUNKTÓW:</div>
         <div class="colors-grid-6" id="grid100"></div>
 
-        <div class="palette-group-title">ZA 250 PUNKTÓW (WZORY W KOLUMNACH):</div>
+        <div class="palette-group-title">ZA 250 PUNKTÓW:</div>
         <div class="colors-grid-4" id="grid250"></div>
 
         <div class="palette-group-title">ZA 500 PUNKTÓW:</div>
@@ -780,7 +780,6 @@
     let currentClan = null;
     const loadedSkins = {};
 
-    // 6 kolorów bazowych
     const BASE_COLORS = [
       { key: "red",    name: "Czerwony",    base: "#ff2233", light: "#ff6677", dark: "#8a0010" },
       { key: "green",  name: "Zielony",     base: "#00e640", light: "#66ff88", dark: "#00661a" },
@@ -790,25 +789,20 @@
       { key: "purple", name: "Fioletowy",   base: "#9b30ff", light: "#c280ff", dark: "#4d0099" }
     ];
 
-    // Budowa struktury kolorów
     const COLOR_TIERS = {
-      // DARMOWE (6 podstawowych w 1 rzędzie)
+      // DARMOWE (6 podstawowych)
       free: BASE_COLORS.map(c => ({ id: c.base, hex: c.base, name: c.name, cost: 0 })),
 
-      // ZA 100 PUNKTÓW (Jasne w 1 rzędzie, pod spodem ciemne w 2 rzędzie)
+      // ZA 100 PUNKTÓW (Jasne w 1 rzędzie, pod nimi ciemne w 2 rzędzie)
       tier100: [
-        // Rząd 1: Jasne
         ...BASE_COLORS.map(c => ({ id: c.light, hex: c.light, name: `${c.name} Jasny`, cost: 100 })),
-        // Rząd 2: Ciemne
         ...BASE_COLORS.map(c => ({ id: c.dark, hex: c.dark, name: `${c.name} Ciemny`, cost: 100 }))
       ],
 
-      // ZA 250 PUNKTÓW (Wzory ułożone pionowo w 4 kolumnach dla każdego z 6 kolorów)
+      // ZA 250 PUNKTÓW (Wzory ułożone pionowo w 4 kolumnach)
       tier250: []
     };
 
-    // Budujemy siatkę 250 pkt: Kolumna 1 = Paski, Kolumna 2 = Kropki, Kolumna 3 = Szachownica, Kolumna 4 = Matrix
-    // Przechodzimy po kolei przez każdy kolor (czerwony, zielony, żółty, pomarańczowy, niebieski, fioletowy)
     BASE_COLORS.forEach(c => {
       COLOR_TIERS.tier250.push({ id: `pat_stripes_${c.key}`, type: "stripes", color: c.base, name: `Paski (${c.name})`, cost: 250 });
       COLOR_TIERS.tier250.push({ id: `pat_dots_${c.key}`, type: "dots", color: c.base, name: `Kropki (${c.name})`, cost: 250 });
@@ -850,14 +844,12 @@
     let lastPlayerMass = 0;
     let syncXpTimeout = null;
 
-    // Generator proceduralnych deseni na Canvasie
     const patternCanvases = {};
     function getPatternCanvas(id) {
       if (patternCanvases[id]) return patternCanvases[id];
       const p = document.createElement("canvas");
       const pc = p.getContext("2d");
 
-      // Odczytanie wzoru i koloru bazowego
       const item = COLOR_TIERS.tier250.find(x => x.id === id);
       const color = item ? item.color : "#ff2233";
       const type = item ? item.type : "stripes";
@@ -915,7 +907,6 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // Renderowanie siatki kolorów
     function renderColorPalette() {
       const unlocked = currentProfile?.unlocked_colors || [];
 
@@ -936,7 +927,6 @@
             tile.style.backgroundColor = item.hex;
             if (item.hex === "#ffffff") tile.style.border = "1px solid #334166";
           } else if (item.type) {
-            // Tło podglądu wzoru z generowanego canvasa
             const pCanvas = getPatternCanvas(item.id);
             tile.style.backgroundImage = `url(${pCanvas.toDataURL()})`;
             tile.style.backgroundSize = "24px 24px";
@@ -1461,7 +1451,6 @@
       chatInput.blur();
     }
 
-    // Obsługa wiadomości oraz przelewów
     async function submitChat() {
       const message = chatInput.value.trim().slice(0, 64);
       if (!message) {
@@ -1469,7 +1458,6 @@
         return;
       }
 
-      // Komenda przelewu: /pay <nick> <kwota>
       if (message.startsWith("/pay ")) {
         if (!currentUser || !currentProfile) {
           appendChatMessage("System", "Musisz być zalogowany, aby wysyłać punkty!", true, "#ff3344");
@@ -1509,7 +1497,6 @@
         return;
       }
 
-      // Wiadomość na czat
       if (isConnected && ws && ws.readyState === WebSocket.OPEN) {
         const buffer = new ArrayBuffer(2 + (message.length + 1) * 2);
         const data = new DataView(buffer);
