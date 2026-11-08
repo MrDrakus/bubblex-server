@@ -56,7 +56,7 @@
       margin-bottom: 12px;
     }
 
-    /* Pasek profilu gracza */
+    /* Pasek profilu gracza z punktami po prawej stronie */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -107,18 +107,7 @@
     .btn-small.cyan { background: #00d2ff; color: #050608; border: none; }
     .btn-small.cyan:hover { background: #33dcff; }
 
-    /* Nagłówek i Kafelki Poziomów */
-    .section-label {
-      font-size: 11px;
-      color: #7e8ea8;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      display: block;
-      text-align: left;
-      margin-bottom: 5px;
-    }
-
+    /* Kafelki z poziomami dla każdego trybu */
     .mode-lvls-grid {
       display: none;
       grid-template-columns: repeat(4, 1fr);
@@ -152,6 +141,16 @@
 
     .row-inputs {
       margin-bottom: 12px;
+      text-align: left;
+    }
+    .section-label {
+      font-size: 11px;
+      color: #7e8ea8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 5px;
       text-align: left;
     }
     .input-nick {
@@ -197,24 +196,24 @@
       cursor: pointer;
     }
 
-    /* Siatka palety kolorów w modalu */
+    /* Modal wyboru koloru */
     .palette-group-title {
       font-size: 11px;
       text-transform: uppercase;
       color: #7e8ea8;
-      font-weight: 700;
+      font-weight: 800;
       text-align: left;
-      margin-top: 8px;
-      margin-bottom: 4px;
+      margin-top: 10px;
+      margin-bottom: 5px;
     }
     .colors-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 7px;
+      margin-bottom: 6px;
     }
     .color-tile {
-      height: 38px;
+      height: 36px;
       border-radius: 8px;
       border: 2px solid transparent;
       cursor: pointer;
@@ -230,17 +229,20 @@
       transform: scale(1.06);
     }
     .color-tile.selected {
-      border-color: #ffffff;
+      border-color: #ffffff !important;
       box-shadow: 0 0 12px rgba(255,255,255,0.7);
     }
     .color-tile.locked::after {
-      content: "🔒 50p";
-      background: rgba(0, 0, 0, 0.7);
+      content: attr(data-cost);
+      background: rgba(0, 0, 0, 0.78);
       color: #ffd700;
       font-size: 9px;
       font-weight: 800;
-      padding: 1px 4px;
+      padding: 2px 4px;
       border-radius: 4px;
+    }
+    .rainbow-gradient {
+      background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
     }
 
     .mode-container {
@@ -597,8 +599,7 @@
         </div>
       </div>
 
-      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB Z ETYKIETĄ -->
-      <span class="section-label" id="modeLvlsLabel" style="display:none;">Poziomy trybów (LVL):</span>
+      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB (BEZ ZBĘDNEGO NAPISU) -->
       <div class="mode-lvls-grid" id="modeLvlsGrid">
         <div class="mode-lvl-card active" id="cardLvlFfa">
           <div class="mode-lvl-name">FFA</div>
@@ -638,8 +639,8 @@
 
       <!-- Wybór koloru kulki z paletą -->
       <div class="color-picker-box" id="userColorBox" style="display: none;" onclick="openModal('colorModal')">
-        <span>Twój kolor kulki (kliknij by zmienić):</span>
-        <div class="color-preview-btn" id="currentColorPreview" style="background: #00d2ff;"></div>
+        <span>Twój kolor kulki:</span>
+        <div class="color-preview-btn" id="currentColorPreview" style="background: #ff2a55;"></div>
       </div>
 
       <div class="action-row">
@@ -657,16 +658,26 @@
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
-      <!-- Modal Palety Kolorów (Podstawowe + Premium za punkty) -->
-      <div class="sub-modal" id="colorModal">
+      <!-- Modal Palety Kolorów (Zgodnie z podziałem cenowym) -->
+      <div class="sub-modal" id="colorModal" style="max-height: 90vh; overflow-y: auto;">
         <h3>WYBIERZ KOLOR KULKI</h3>
-        <div class="palette-group-title">Podstawowe (Darmowe):</div>
-        <div class="colors-grid" id="freeColorsGrid"></div>
+        
+        <div class="palette-group-title">Darmowe (Podstawowe):</div>
+        <div class="colors-grid" id="gridFree"></div>
 
-        <div class="palette-group-title">Ciekawe / Premium (Koszt: 50 pkt na stałe):</div>
-        <div class="colors-grid" id="premiumColorsGrid"></div>
+        <div class="palette-group-title">Za 50 Punktów:</div>
+        <div class="colors-grid" id="grid50"></div>
 
-        <button class="btn-small cyan" style="padding:10px; margin-top:8px;" onclick="closeModal('colorModal')">Gotowe</button>
+        <div class="palette-group-title">Za 100 Punktów (Odcienie):</div>
+        <div class="colors-grid" id="grid100"></div>
+
+        <div class="palette-group-title">Za 200 Punktów (Unikalne):</div>
+        <div class="colors-grid" id="grid200"></div>
+
+        <div class="palette-group-title">Za 500 Punktów (Legenda RGB):</div>
+        <div class="colors-grid" id="grid500"></div>
+
+        <button class="btn-small cyan" style="padding:10px; margin-top:8px;" onclick="closeModal('colorModal')">Zamknij</button>
       </div>
 
       <!-- Modal Logowania -->
@@ -769,23 +780,39 @@
     let currentClan = null;
     const loadedSkins = {};
 
-    // 10 podstawowych darmowych kolorów
-    const FREE_COLORS = [
-      "#00d2ff", "#ff2a55", "#00ff88", "#ffd700", "#a855f7",
-      "#ff8800", "#00e5ff", "#e0e7ff", "#22c55e", "#ec4899"
-    ];
+    // Katalog kolorów z podziałem cenowym
+    const COLOR_TIERS = {
+      free: [
+        { hex: "#ff2233", name: "Czerwony", cost: 0 },
+        { hex: "#00e640", name: "Zielony", cost: 0 },
+        { hex: "#0088ff", name: "Niebieski", cost: 0 },
+        { hex: "#ffd700", name: "Żółty", cost: 0 }
+      ],
+      tier50: [
+        { hex: "#ff7700", name: "Pomarańczowy", cost: 50 },
+        { hex: "#9b30ff", name: "Fioletowy", cost: 50 },
+        { hex: "#ff3399", name: "Różowy", cost: 50 },
+        { hex: "#00e5ff", name: "Morski / Cyan", cost: 50 }
+      ],
+      tier100: [
+        { hex: "#880015", name: "Ciemna Czerwień", cost: 100 },
+        { hex: "#a6ff00", name: "Limonkowy", cost: 100 },
+        { hex: "#001f7a", name: "Granatowy", cost: 100 },
+        { hex: "#c8a100", name: "Musztardowy", cost: 100 },
+        { hex: "#b388ff", name: "Lawenda", cost: 100 }
+      ],
+      tier200: [
+        { hex: "#ffffff", name: "Czysta Biel", cost: 200 },
+        { hex: "#0b0f19", name: "Obsidian", cost: 200 },
+        { hex: "#d4af37", name: "Złoty Metalik", cost: 200 },
+        { hex: "#00f59b", name: "Neon Szmaragd", cost: 200 }
+      ],
+      tier500: [
+        { hex: "rainbow", name: "Tęcza RGB (Rainbow)", cost: 500, isRainbow: true }
+      ]
+    };
 
-    // 6 ciekawych kolorów premium (koszt: 50 pkt każdy)
-    const PREMIUM_COLORS = [
-      { hex: "#ff007f", name: "Neon Magenta" },
-      { hex: "#7928ca", name: "Deep Violet" },
-      { hex: "#ff4500", name: "Lava Orange" },
-      { hex: "#10b981", name: "Emerald" },
-      { hex: "#fbbf24", name: "Pure Gold" },
-      { hex: "#0f172a", name: "Obsidian" }
-    ];
-
-    let chosenPlayerColor = localStorage.getItem("bubblex_color") || "#00d2ff";
+    let chosenPlayerColor = localStorage.getItem("bubblex_color") || "#ff2233";
 
     try {
       const cached = localStorage.getItem("bubblex_profile");
@@ -833,46 +860,54 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // Renderowanie palety kolorów (darmowe + premium)
+    // Renderowanie siatki w modalu kolorów
     function renderColorPalette() {
-      const freeGrid = document.getElementById("freeColorsGrid");
-      const premGrid = document.getElementById("premiumColorsGrid");
-      freeGrid.innerHTML = "";
-      premGrid.innerHTML = "";
-
       const unlocked = currentProfile?.unlocked_colors || [];
 
-      FREE_COLORS.forEach(c => {
-        const tile = document.createElement("div");
-        tile.className = "color-tile" + (chosenPlayerColor.toLowerCase() === c.toLowerCase() ? " selected" : "");
-        tile.style.backgroundColor = c;
-        tile.onclick = () => selectColor(c);
-        freeGrid.appendChild(tile);
-      });
+      function populateGrid(gridId, items) {
+        const grid = document.getElementById(gridId);
+        grid.innerHTML = "";
+        items.forEach(item => {
+          const isFree = item.cost === 0;
+          const isUnlocked = isFree || unlocked.includes(item.hex);
+          const tile = document.createElement("div");
 
-      PREMIUM_COLORS.forEach(item => {
-        const isUnlocked = unlocked.includes(item.hex);
-        const tile = document.createElement("div");
-        tile.className = "color-tile" + 
-          (chosenPlayerColor.toLowerCase() === item.hex.toLowerCase() ? " selected" : "") +
-          (!isUnlocked ? " locked" : "");
-        tile.style.backgroundColor = item.hex;
-        tile.title = item.name + (!isUnlocked ? " (Koszt: 50 pkt)" : "");
-        tile.onclick = () => {
-          if (isUnlocked) {
-            selectColor(item.hex);
-          } else {
-            buyPremiumColor(item.hex, item.name);
+          tile.className = "color-tile" + 
+            (chosenPlayerColor.toLowerCase() === item.hex.toLowerCase() ? " selected" : "") +
+            (!isUnlocked ? " locked" : "") +
+            (item.isRainbow ? " rainbow-gradient" : "");
+
+          if (!item.isRainbow) {
+            tile.style.backgroundColor = item.hex;
           }
-        };
-        premGrid.appendChild(tile);
-      });
+          if (item.hex === "#ffffff") {
+            tile.style.border = "1px solid #334166";
+          }
+          tile.setAttribute("data-cost", `🔒 ${item.cost}p`);
+          tile.title = item.name + (!isUnlocked ? ` (Koszt: ${item.cost} pkt)` : "");
+
+          tile.onclick = () => {
+            if (isUnlocked) {
+              selectColor(item.hex);
+            } else {
+              buyColor(item);
+            }
+          };
+          grid.appendChild(tile);
+        });
+      }
+
+      populateGrid("gridFree", COLOR_TIERS.free);
+      populateGrid("grid50", COLOR_TIERS.tier50);
+      populateGrid("grid100", COLOR_TIERS.tier100);
+      populateGrid("grid200", COLOR_TIERS.tier200);
+      populateGrid("grid500", COLOR_TIERS.tier500);
     }
 
     async function selectColor(colorHex) {
       chosenPlayerColor = colorHex;
       localStorage.setItem("bubblex_color", colorHex);
-      document.getElementById("currentColorPreview").style.backgroundColor = colorHex;
+      updateColorPreviewUI();
 
       if (currentProfile) {
         currentProfile.selected_color = colorHex;
@@ -885,26 +920,37 @@
       renderColorPalette();
     }
 
-    async function buyPremiumColor(colorHex, colorName) {
-      if (!currentProfile || !currentUser) {
-        return alert("Musisz być zalogowany, aby kupować kolory!");
+    function updateColorPreviewUI() {
+      const preview = document.getElementById("currentColorPreview");
+      if (chosenPlayerColor === "rainbow") {
+        preview.className = "color-preview-btn rainbow-gradient";
+        preview.style.backgroundColor = "transparent";
+      } else {
+        preview.className = "color-preview-btn";
+        preview.style.backgroundColor = chosenPlayerColor;
       }
-      if ((currentProfile.points || 0) < 50) {
-        return alert(`Masz za mało punktów! Ten kolor kosztuje 50 punktów (Twój stan: ${currentProfile.points || 0} pkt).`);
+    }
+
+    async function buyColor(item) {
+      if (!currentProfile || !currentUser) {
+        return alert("Musisz być zalogowany, aby odblokowywać kolory!");
+      }
+      if ((currentProfile.points || 0) < item.cost) {
+        return alert(`Masz za mało punktów! Kolor "${item.name}" kosztuje ${item.cost} punktów (Twój stan: ${currentProfile.points || 0} pkt).`);
       }
 
-      const wantBuy = confirm(`Czy chcesz odblokować unikalny kolor "${colorName}" na stałe za 50 punktów?`);
+      const wantBuy = confirm(`Czy chcesz odblokować unikalny kolor "${item.name}" na stałe za ${item.cost} punktów?`);
       if (!wantBuy) return;
 
-      const newPts = currentProfile.points - 50;
-      const updatedUnlocked = [...(currentProfile.unlocked_colors || []), colorHex];
+      const newPts = currentProfile.points - item.cost;
+      const updatedUnlocked = [...(currentProfile.unlocked_colors || []), item.hex];
 
       const { error } = await sb
         .from('profiles')
         .update({ 
           points: newPts, 
           unlocked_colors: updatedUnlocked,
-          selected_color: colorHex 
+          selected_color: item.hex 
         })
         .eq('id', currentUser.id);
 
@@ -912,18 +958,18 @@
 
       currentProfile.points = newPts;
       currentProfile.unlocked_colors = updatedUnlocked;
-      currentProfile.selected_color = colorHex;
-      chosenPlayerColor = colorHex;
+      currentProfile.selected_color = item.hex;
+      chosenPlayerColor = item.hex;
 
       try {
         localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
-        localStorage.setItem("bubblex_color", colorHex);
+        localStorage.setItem("bubblex_color", item.hex);
       } catch(e) {}
 
-      document.getElementById("currentColorPreview").style.backgroundColor = colorHex;
+      updateColorPreviewUI();
       updateUserUI();
       renderColorPalette();
-      alert(`Kolor "${colorName}" został odblokowany i wybrany!`);
+      alert(`Kolor "${item.name}" został odblokowany na stałe i wybrany!`);
     }
 
     async function handleLogin() {
@@ -954,8 +1000,8 @@
       if (profile.selected_color) {
         chosenPlayerColor = profile.selected_color;
         localStorage.setItem("bubblex_color", chosenPlayerColor);
-        document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
       }
+      updateColorPreviewUI();
 
       try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
 
@@ -1032,8 +1078,8 @@
           if (profile.selected_color) {
             chosenPlayerColor = profile.selected_color;
             localStorage.setItem("bubblex_color", chosenPlayerColor);
-            document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
           }
+          updateColorPreviewUI();
           try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
 
           if (profile.clan_id) {
@@ -1061,7 +1107,6 @@
       const guestNickBox = document.getElementById("guestNickBox");
       const userColorBox = document.getElementById("userColorBox");
       const modeLvlsGrid = document.getElementById("modeLvlsGrid");
-      const modeLvlsLabel = document.getElementById("modeLvlsLabel");
 
       if (currentProfile && currentProfile.username) {
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
@@ -1074,15 +1119,13 @@
         guestNickBox.style.display = "none";
         userColorBox.style.display = "flex";
         modeLvlsGrid.style.display = "grid";
-        modeLvlsLabel.style.display = "block";
 
         document.getElementById("valLvlFfa").textContent = `LVL (${currentProfile.level_ffa || 1})`;
         document.getElementById("valLvlMegasplit").textContent = `LVL (${currentProfile.level_megasplit || 1})`;
         document.getElementById("valLvlHardcore").textContent = `LVL (${currentProfile.level_hardcore || 1})`;
         document.getElementById("valLvlExperimental").textContent = `LVL (${currentProfile.level_experimental || 1})`;
 
-        document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
-
+        updateColorPreviewUI();
         highlightActiveModeCard();
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
@@ -1093,7 +1136,6 @@
         guestNickBox.style.display = "block";
         userColorBox.style.display = "none";
         modeLvlsGrid.style.display = "none";
-        modeLvlsLabel.style.display = "none";
         document.getElementById("nick").value = "";
       }
     }
@@ -1239,7 +1281,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
-      document.getElementById("currentColorPreview").style.backgroundColor = chosenPlayerColor;
+      updateColorPreviewUI();
       updateUserUI();
 
       if (!sb) return;
@@ -1914,6 +1956,12 @@
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
 
+      // Dynamiczny kolor Rainbow (płynna zmiana odcienia HSL w czasie)
+      const rainbowHue = (Date.now() / 15) % 360;
+      const activeColor = (chosenPlayerColor === "rainbow") 
+        ? `hsl(${rainbowHue}, 100%, 50%)` 
+        : chosenPlayerColor;
+
       for (const node of sortedNodes) {
         const nodeMoveSmooth = myCellIds.has(node.id)
           ? 1 - Math.exp(-deltaMs / 50)
@@ -1932,7 +1980,7 @@
           ctx.beginPath();
           ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
           
-          ctx.fillStyle = (isMyCell && currentProfile) ? chosenPlayerColor : node.color;
+          ctx.fillStyle = (isMyCell && currentProfile) ? activeColor : node.color;
           ctx.fill();
 
           const skinImg = (isMyCell && currentClan && currentClan.skin_url)
