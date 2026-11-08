@@ -106,6 +106,8 @@
     .btn-small:hover { background: #263354; }
     .btn-small.cyan { background: #00d2ff; color: #050608; border: none; }
     .btn-small.cyan:hover { background: #33dcff; }
+    .btn-small.gold { background: #ffd700; color: #050608; border: none; }
+    .btn-small.gold:hover { background: #ffe347; }
 
     /* Kafelki z poziomami */
     .mode-lvls-grid {
@@ -376,6 +378,84 @@
       text-align: left;
     }
 
+    /* Modal Rankingu */
+    .ranking-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .ranking-tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: #090e18;
+      border: 1px solid #23293d;
+      border-radius: 6px;
+      color: #7e8ea8;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ranking-tab-btn.active {
+      background: rgba(0, 210, 255, 0.15);
+      border-color: #00d2ff;
+      color: #00d2ff;
+    }
+    .ranking-search-box {
+      margin-bottom: 8px;
+    }
+    .ranking-list-container {
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid #23293d;
+      border-radius: 8px;
+      background: #090b12;
+      padding: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: #334166 transparent;
+    }
+    .ranking-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      border-bottom: 1px solid #141b2c;
+    }
+    .ranking-item:last-child { border-bottom: none; }
+    .ranking-item.me {
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid #00d2ff;
+      color: #fff;
+    }
+    .rank-num {
+      width: 28px;
+      font-weight: 800;
+      color: #7e8ea8;
+    }
+    .rank-top1 { color: #ffd700 !important; }
+    .rank-top2 { color: #c0c0c0 !important; }
+    .rank-top3 { color: #cd7f32 !important; }
+    .rank-player {
+      flex: 1;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .rank-lvl-badge {
+      background: #1b233a;
+      color: #00d2ff;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid #334166;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -590,13 +670,14 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Pasek profilu gracza -->
+      <!-- Pasek profilu gracza z przyciskiem Ranking -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
           <span class="pts-pill" id="userPointsPill" style="display:none;">0 pkt</span>
         </div>
         <div class="auth-btn-group">
+          <button class="btn-small gold" id="btnOpenRanking" onclick="openRankingModal()">Ranking</button>
           <button class="btn-small" id="btnOpenClan" onclick="openModal('clanModal')" style="display: none;">Klan</button>
           <button class="btn-small" id="btnLogout" onclick="logoutUser()" style="display: none;">Wyloguj</button>
         </div>
@@ -640,7 +721,7 @@
         <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
       </div>
 
-      <!-- Wybór koloru kulki: tylko "Twój kolor:" -->
+      <!-- Wybór koloru kulki -->
       <div class="color-picker-box" id="userColorBox" style="display: none;" onclick="openModal('colorModal')">
         <span>Twój kolor:</span>
         <div class="color-preview-btn" id="currentColorPreview" style="background: #ff2233;"></div>
@@ -661,7 +742,32 @@
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
-      <!-- Modal Palety Kolorów (Czyste nagłówki bez nawiasów) -->
+      <!-- MODAL RANKINGU (ZAKŁADKI TRYBÓW + WYSZUKIWARKA) -->
+      <div class="sub-modal" id="rankingModal" style="max-height: 94vh;">
+        <h3>RANKING POZIOMÓW (TOP GRACZE)</h3>
+        
+        <!-- Zakładki trybów -->
+        <div class="ranking-tabs">
+          <button class="ranking-tab-btn active" id="tabRank_ffa" onclick="changeRankingTab('ffa')">FFA</button>
+          <button class="ranking-tab-btn" id="tabRank_megasplit" onclick="changeRankingTab('megasplit')">MegaSplit</button>
+          <button class="ranking-tab-btn" id="tabRank_hardcore" onclick="changeRankingTab('hardcore')">Hardcore</button>
+          <button class="ranking-tab-btn" id="tabRank_experimental" onclick="changeRankingTab('experimental')">Exp</button>
+        </div>
+
+        <!-- Wyszukiwarka po nicku -->
+        <div class="ranking-search-box">
+          <input type="text" id="rankingSearchInput" class="sub-input" placeholder="Wyszukaj gracza po nicku..." oninput="filterRankingList()">
+        </div>
+
+        <!-- Lista graczy -->
+        <div class="ranking-list-container" id="rankingListContainer">
+          <div style="padding: 16px; color: #7e8ea8; font-size: 12px;">Ładowanie rankingu...</div>
+        </div>
+
+        <button class="btn-small cyan" style="padding:10px; margin-top:6px;" onclick="closeModal('rankingModal')">Wróć</button>
+      </div>
+
+      <!-- Modal Palety Kolorów -->
       <div class="sub-modal" id="colorModal" style="max-height: 92vh; overflow-y: auto;">
         <h3>WYBIERZ KOLOR LUB WZÓR</h3>
         
@@ -790,16 +896,11 @@
     ];
 
     const COLOR_TIERS = {
-      // DARMOWE (6 podstawowych)
       free: BASE_COLORS.map(c => ({ id: c.base, hex: c.base, name: c.name, cost: 0 })),
-
-      // ZA 100 PUNKTÓW (Jasne w 1 rzędzie, pod nimi ciemne w 2 rzędzie)
       tier100: [
         ...BASE_COLORS.map(c => ({ id: c.light, hex: c.light, name: `${c.name} Jasny`, cost: 100 })),
         ...BASE_COLORS.map(c => ({ id: c.dark, hex: c.dark, name: `${c.name} Ciemny`, cost: 100 }))
       ],
-
-      // ZA 250 PUNKTÓW (Wzory ułożone pionowo w 4 kolumnach)
       tier250: []
     };
 
@@ -810,7 +911,6 @@
       COLOR_TIERS.tier250.push({ id: `pat_matrix_${c.key}`, type: "matrix", color: c.base, name: `Matrix (${c.name})`, cost: 250 });
     });
 
-    // ZA 500 PUNKTÓW
     COLOR_TIERS.tier500 = [
       { id: "#ffffff", hex: "#ffffff", name: "Czysta Biel", cost: 500 },
       { id: "#070a13", hex: "#070a13", name: "Obsidian", cost: 500 },
@@ -843,6 +943,10 @@
     let foodEatenCount = 0;
     let lastPlayerMass = 0;
     let syncXpTimeout = null;
+
+    // Zmienne rankingu
+    let activeRankingMode = "ffa";
+    let cachedRankingPlayers = [];
 
     const patternCanvases = {};
     function getPatternCanvas(id) {
@@ -907,6 +1011,106 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
+    // LOGIKA RANKINGU
+    function openRankingModal() {
+      openModal('rankingModal');
+      document.getElementById("rankingSearchInput").value = "";
+      changeRankingTab(currentModeKey);
+    }
+
+    function changeRankingTab(modeKey) {
+      activeRankingMode = modeKey;
+      const tabs = ['ffa', 'megasplit', 'hardcore', 'experimental'];
+      tabs.forEach(m => {
+        const btn = document.getElementById(`tabRank_${m}`);
+        if (btn) {
+          if (m === modeKey) btn.classList.add("active");
+          else btn.classList.remove("active");
+        }
+      });
+      loadRankingData();
+    }
+
+    async function loadRankingData() {
+      const list = document.getElementById("rankingListContainer");
+      list.innerHTML = `<div style="padding: 16px; color: #7e8ea8; font-size: 12px;">Pobieranie rankingu ${activeRankingMode.toUpperCase()}...</div>`;
+
+      if (!sb) return;
+
+      const lvlCol = `level_${activeRankingMode}`;
+      const xpCol = `xp_${activeRankingMode}`;
+
+      try {
+        const { data, error } = await sb
+          .from('profiles')
+          .select(`id, username, ${lvlCol}, ${xpCol}, clans(tag)`)
+          .order(lvlCol, { ascending: false })
+          .order(xpCol, { ascending: false })
+          .limit(50);
+
+        if (error) {
+          list.innerHTML = `<div style="padding: 16px; color: #ff3344; font-size: 12px;">Błąd pobierania: ${error.message}</div>`;
+          return;
+        }
+
+        cachedRankingPlayers = data || [];
+        renderRankingList(cachedRankingPlayers);
+      } catch (err) {
+        list.innerHTML = `<div style="padding: 16px; color: #ff3344; font-size: 12px;">Błąd połączenia z bazą.</div>`;
+      }
+    }
+
+    function renderRankingList(players) {
+      const list = document.getElementById("rankingListContainer");
+      list.innerHTML = "";
+
+      if (!players || players.length === 0) {
+        list.innerHTML = `<div style="padding: 16px; color: #7e8ea8; font-size: 12px;">Brak wyników do wyświetlenia.</div>`;
+        return;
+      }
+
+      const lvlCol = `level_${activeRankingMode}`;
+      const xpCol = `xp_${activeRankingMode}`;
+
+      players.forEach((p, idx) => {
+        const isMe = currentProfile && currentProfile.id === p.id;
+        const row = document.createElement("div");
+        row.className = "ranking-item" + (isMe ? " me" : "");
+
+        let rankClass = "";
+        if (idx === 0) rankClass = "rank-top1";
+        else if (idx === 1) rankClass = "rank-top2";
+        else if (idx === 2) rankClass = "rank-top3";
+
+        const clanTag = p.clans?.tag ? `[${p.clans.tag}] ` : "";
+        const playerLvl = p[lvlCol] || 1;
+
+        row.innerHTML = `
+          <span class="rank-num ${rankClass}">#${idx + 1}</span>
+          <span class="rank-player">
+            <span>${clanTag}<strong>${p.username}</strong> ${isMe ? '(Ty)' : ''}</span>
+          </span>
+          <span class="rank-lvl-badge">LVL (${playerLvl})</span>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function filterRankingList() {
+      const q = document.getElementById("rankingSearchInput").value.trim().toLowerCase();
+      if (!q) {
+        renderRankingList(cachedRankingPlayers);
+        return;
+      }
+
+      const filtered = cachedRankingPlayers.filter(p => 
+        p.username.toLowerCase().includes(q) || 
+        (p.clans?.tag && p.clans.tag.toLowerCase().includes(q))
+      );
+      renderRankingList(filtered);
+    }
+
+    // Renderowanie siatki kolorów
     function renderColorPalette() {
       const unlocked = currentProfile?.unlocked_colors || [];
 
