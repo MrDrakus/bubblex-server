@@ -5,7 +5,12 @@
   <title>BubbleX.pl - Serwer MultiOgar</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none; 
+    }
     body, html {
       width: 100%; height: 100%;
       overflow: hidden;
@@ -114,8 +119,17 @@
       font-size: 14px;
       outline: none;
       color: #ffffff;
+      transition: all 0.2s;
     }
     .input-nick:focus { border-color: #00d2ff; }
+    /* Styl zablokowanego nicku po zalogowaniu */
+    .input-nick:read-only {
+      background: #0d111d;
+      border-color: #1e283d;
+      color: #00d2ff;
+      cursor: not-allowed;
+      font-weight: 700;
+    }
 
     .select-rank {
       flex: 1;
@@ -615,10 +629,8 @@
       currentProfile = profile;
       if (profile && profile.clans) {
         currentClan = profile.clans;
-        document.getElementById("nick").value = `[${currentClan.tag}] ${profile.username}`;
-      } else if (profile) {
+      } else {
         currentClan = null;
-        document.getElementById("nick").value = profile.username;
       }
       updateUserUI();
     }
@@ -630,6 +642,7 @@
       const btnOpenClan = document.getElementById("btnOpenClan");
       const btnLogout = document.getElementById("btnLogout");
       const bottomAuthBar = document.getElementById("bottomAuthBar");
+      const nickInput = document.getElementById("nick");
 
       if (currentUser && currentProfile) {
         const lvl = currentProfile.level || 1;
@@ -640,6 +653,11 @@
         btnOpenClan.style.display = "block";
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
+
+        // Wstaw stały nick z bazy i ZABLOKUJ jego edycję
+        nickInput.value = currentProfile.username;
+        nickInput.readOnly = true;
+        nickInput.title = "Jesteś zalogowany - Twój nick jest przypisany do konta";
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
         ptsLabel.textContent = `Punkty: 0`;
@@ -647,6 +665,11 @@
         btnOpenClan.style.display = "none";
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
+
+        // Odblokuj pole dla gościa
+        nickInput.readOnly = false;
+        nickInput.value = "";
+        nickInput.title = "";
       }
     }
 
@@ -1399,14 +1422,23 @@
     btnPlay.addEventListener("click", () => {
       if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
 
-      const inputVal = document.getElementById("nick").value.trim();
-      const rawNick = inputVal.length > 0 ? inputVal : "Gracz";
+      let finalNick = "";
       const rank = document.getElementById("rankSelect").value;
 
-      let finalNick = rawNick;
-      if (rank === "VIP" && !rawNick.startsWith("[")) finalNick = `[VIP] ${rawNick}`;
-      else if (rank === "SVIP" && !rawNick.startsWith("[")) finalNick = `[SVIP] ${rawNick}`;
-      else if (rank === "ADMIN" && !rawNick.startsWith("[")) finalNick = `[ADMIN] ${rawNick}`;
+      if (currentUser && currentProfile) {
+        // Gracz zalogowany: pobieramy nick z profilu, dodajemy tag klanu i LVL
+        const lvl = currentProfile.level || 1;
+        const clanTag = currentClan ? `[${currentClan.tag}] ` : "";
+        finalNick = `${clanTag}${currentProfile.username} (LVL ${lvl})`;
+      } else {
+        // Gość: bierze nick z pola tekstowego
+        const inputVal = document.getElementById("nick").value.trim();
+        finalNick = inputVal.length > 0 ? inputVal : "Gracz";
+      }
+
+      if (rank === "VIP" && !finalNick.startsWith("[")) finalNick = `[VIP] ${finalNick}`;
+      else if (rank === "SVIP" && !finalNick.startsWith("[")) finalNick = `[SVIP] ${finalNick}`;
+      else if (rank === "ADMIN" && !finalNick.startsWith("[")) finalNick = `[ADMIN] ${finalNick}`;
 
       sendSpawn(finalNick);
     });
