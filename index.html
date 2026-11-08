@@ -338,6 +338,56 @@
       z-index: 10;
     }
 
+    /* Pasek Postępu Poziomu na dole ekranu */
+    #xp-hud {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(440px, 86vw);
+      background: rgba(11, 15, 25, 0.85);
+      border: 1px solid #23293d;
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: none;
+      z-index: 12;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      pointer-events: none;
+    }
+    .xp-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    .xp-lvl-label {
+      color: #00d2ff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .xp-text {
+      color: #94a3b8;
+      font-size: 11px;
+    }
+    .xp-bar-bg {
+      width: 100%;
+      height: 9px;
+      background: #07090f;
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid #1a233a;
+    }
+    .xp-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00d2ff, #00ff88);
+      border-radius: 5px;
+      transition: width 0.15s ease-out;
+    }
+
     #leaderboard {
       position: absolute;
       top: 20px;
@@ -467,13 +517,13 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Pasek profilu gracza z LVL -->
+      <!-- Pasek profilu gracza -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
           <div>
             <span id="userPointsLabel" class="user-pts">Punkty: 0</span>
-            <span id="userLevelBadge" class="badge-lvl" style="display:none;">LVL 1</span>
+            <span id="userLevelBadge" class="badge-lvl" style="display:none;">1</span>
           </div>
         </div>
         <div class="auth-btn-group">
@@ -500,7 +550,7 @@
         <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
       </div>
 
-      <!-- Widoczne tylko dla zalogowanego: Wybór koloru kulki -->
+      <!-- Widoczne tylko dla zalogowanego gracza: Wybór koloru kulki -->
       <div class="color-picker-box" id="userColorBox" style="display: none;">
         <span>Twój własny kolor kulki:</span>
         <input type="color" id="playerColorInput" class="input-color" value="#00d2ff">
@@ -589,6 +639,17 @@
 
   <div id="score-hud">Masa: <span id="scoreVal">0</span></div>
 
+  <!-- Pasek Postępu Poziomu na dole ekranu -->
+  <div id="xp-hud">
+    <div class="xp-info-row">
+      <span class="xp-lvl-label">POZIOM <span id="hudLvlVal">1</span></span>
+      <span class="xp-text"><span id="hudMassVal">0</span> / <span id="hudTargetVal">100</span> MASY</span>
+    </div>
+    <div class="xp-bar-bg">
+      <div class="xp-bar-fill" id="hudXpFill"></div>
+    </div>
+  </div>
+
   <div id="leaderboard">
     <h3>TOP 10</h3>
     <ol id="lbList"></ol>
@@ -619,6 +680,11 @@
     let gameStartTime = 0;
     let maxGameMass = 0;
     let foodEatenCount = 0;
+
+    // Funkcja wyliczająca wymaganą masę na dany poziom (im wyższy, tym trudniej)
+    function getRequiredMassForLevel(lvl) {
+      return Math.round(100 * Math.pow(lvl, 1.5));
+    }
 
     function getSkinImage(url) {
       if (!url) return null;
@@ -672,7 +738,7 @@
       
       updateUserUI();
       await loadUserData();
-      alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (LVL " + (currentProfile.level || 1) + ")");
+      alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (" + (currentProfile.level || 1) + ")");
     }
 
     async function handleRegister() {
@@ -769,13 +835,12 @@
         const lvl = currentProfile.level || 1;
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
         ptsLabel.textContent = `Punkty: ${currentProfile.points || 0}`;
-        lvlBadge.textContent = `LVL ${lvl}`;
+        lvlBadge.textContent = `${lvl}`;
         lvlBadge.style.display = "inline-block";
         btnOpenClan.style.display = "block";
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
 
-        // Ukrywamy pole nicku dla zalogowanego, pokazujemy próbnik koloru
         guestNickBox.style.display = "none";
         userColorBox.style.display = "flex";
       } else {
@@ -792,7 +857,34 @@
       }
     }
 
-    // Zakup dostępu do czatu za 10 punktów
+    // Aktualizacja paska poziomu na dole ekranu i sprawdzanie awansu
+    function updateXpHud(currentMass) {
+      if (!isAlive) return;
+
+      const currentLvl = currentProfile ? (currentProfile.level || 1) : 1;
+      const targetMass = getRequiredMassForLevel(currentLvl);
+
+      document.getElementById("hudLvlVal").textContent = currentLvl;
+      document.getElementById("hudMassVal").textContent = currentMass;
+      document.getElementById("hudTargetVal").textContent = targetMass;
+
+      const percent = Math.min(100, Math.max(0, (currentMass / targetMass) * 100));
+      document.getElementById("hudXpFill").style.width = `${percent}%`;
+
+      // Awans na wyższy poziom, gdy osiągnięto wymaganą masę
+      if (currentProfile && currentMass >= targetMass) {
+        const newLvl = currentLvl + 1;
+        currentProfile.level = newLvl;
+        try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
+        updateUserUI();
+
+        if (currentUser && sb) {
+          sb.from('profiles').update({ level: newLvl }).eq('id', currentUser.id).then();
+        }
+        appendChatMessage("System", `AWANS! Osiągnięto poziom (${newLvl})!`, true, "#00ff88");
+      }
+    }
+
     async function buyChatAccess() {
       if (!currentProfile || !currentUser) {
         alert("Musisz być zalogowany, aby odblokować czat!");
@@ -973,7 +1065,6 @@
     async function openChat() {
       if (!isConnected || !isAlive) return;
 
-      // Sprawdzenie czy gracz odblokował czat za 10 pkt
       if (!currentProfile || !currentProfile.chat_unlocked) {
         const bought = await buyChatAccess();
         if (!bought) return;
@@ -1078,6 +1169,7 @@
       currentServerUrl = serverUrl || currentServerUrl;
       mapBorder = { ...defaultMapBorder };
       minimapHud.style.display = "none";
+      document.getElementById("xp-hud").style.display = "none";
       closeChat();
       chatPanel.style.display = "none";
       chatMessages.replaceChildren();
@@ -1132,6 +1224,7 @@
         closeChat();
         chatPanel.style.display = "none";
         minimapHud.style.display = "none";
+        document.getElementById("xp-hud").style.display = "none";
         statusEl.textContent = "Brak połączenia. Wybudzanie serwera w chmurze...";
         statusEl.className = "status-error";
         btnPlay.textContent = "BRAK SERWERA";
@@ -1270,6 +1363,7 @@
             closeChat();
             chatPanel.style.display = "none";
             minimapHud.style.display = "none";
+            document.getElementById("xp-hud").style.display = "none";
             document.getElementById("score-hud").style.display = "none";
             document.getElementById("leaderboard").style.display = "none";
 
@@ -1314,6 +1408,7 @@
           document.getElementById("statsOverlay").style.display = "none";
           document.getElementById("score-hud").style.display = "block";
           document.getElementById("leaderboard").style.display = "block";
+          document.getElementById("xp-hud").style.display = "block";
           chatPanel.style.display = "flex";
           minimapHud.style.display = "block";
           break;
@@ -1556,7 +1651,6 @@
           ctx.beginPath();
           ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
           
-          // Użycie wybranego koloru gracza dla własnych kulek
           ctx.fillStyle = (isMyCell && currentProfile) ? chosenColor : node.color;
           ctx.fill();
 
@@ -1610,6 +1704,7 @@
       if (isAlive) {
         document.getElementById("scoreVal").textContent = totalMass;
         if (totalMass > maxGameMass) maxGameMass = totalMass;
+        updateXpHud(totalMass);
       }
 
       requestAnimationFrame(render);
@@ -1622,7 +1717,7 @@
       if (currentProfile && currentProfile.username) {
         const lvl = currentProfile.level || 1;
         const clanTag = currentClan ? `[${currentClan.tag}] ` : "";
-        finalNick = `${clanTag}${currentProfile.username} (LVL ${lvl})`;
+        finalNick = `${clanTag}${currentProfile.username} (${lvl})`;
       } else {
         const inputVal = document.getElementById("nick").value.trim();
         finalNick = inputVal.length > 0 ? inputVal : "Gracz";
