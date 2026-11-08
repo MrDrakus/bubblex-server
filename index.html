@@ -56,7 +56,7 @@
       margin-bottom: 12px;
     }
 
-    /* Pasek profilu gracza z punktami po prawej stronie */
+    /* Pasek profilu gracza */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -196,7 +196,7 @@
       cursor: pointer;
     }
 
-    /* Modal wyboru koloru */
+    /* Modal wyboru koloru / deseni */
     .palette-group-title {
       font-size: 11px;
       text-transform: uppercase;
@@ -208,13 +208,13 @@
     }
     .colors-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 7px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
       margin-bottom: 6px;
     }
     .color-tile {
-      height: 36px;
-      border-radius: 8px;
+      height: 34px;
+      border-radius: 7px;
       border: 2px solid transparent;
       cursor: pointer;
       position: relative;
@@ -236,10 +236,30 @@
       content: attr(data-cost);
       background: rgba(0, 0, 0, 0.78);
       color: #ffd700;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 800;
-      padding: 2px 4px;
-      border-radius: 4px;
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+
+    /* Klasy CSS dla wzorów */
+    .pat-stripes {
+      background: repeating-linear-gradient(45deg, #ff0055, #ff0055 6px, #1a1a2e 6px, #1a1a2e 12px);
+    }
+    .pat-dots {
+      background-color: #00e5ff;
+      background-image: radial-gradient(#06080f 25%, transparent 25%);
+      background-size: 8px 8px;
+    }
+    .pat-checker {
+      background-color: #ffd700;
+      background-image: linear-gradient(45deg, #111 25%, transparent 25%, transparent 75%, #111 75%, #111), 
+                        linear-gradient(45deg, #111 25%, transparent 25%, transparent 75%, #111 75%, #111);
+      background-size: 10px 10px;
+      background-position: 0 0, 5px 5px;
+    }
+    .pat-matrix {
+      background: repeating-linear-gradient(0deg, #001100, #001100 2px, #00ff66 2px, #00ff66 4px);
     }
     .rainbow-gradient {
       background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
@@ -599,7 +619,7 @@
         </div>
       </div>
 
-      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB (BEZ ZBĘDNEGO NAPISU) -->
+      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB -->
       <div class="mode-lvls-grid" id="modeLvlsGrid">
         <div class="mode-lvl-card active" id="cardLvlFfa">
           <div class="mode-lvl-name">FFA</div>
@@ -640,7 +660,7 @@
       <!-- Wybór koloru kulki z paletą -->
       <div class="color-picker-box" id="userColorBox" style="display: none;" onclick="openModal('colorModal')">
         <span>Twój kolor kulki:</span>
-        <div class="color-preview-btn" id="currentColorPreview" style="background: #ff2a55;"></div>
+        <div class="color-preview-btn" id="currentColorPreview" style="background: #ff2233;"></div>
       </div>
 
       <div class="action-row">
@@ -658,23 +678,20 @@
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
-      <!-- Modal Palety Kolorów (Zgodnie z podziałem cenowym) -->
+      <!-- Modal Palety Kolorów -->
       <div class="sub-modal" id="colorModal" style="max-height: 90vh; overflow-y: auto;">
         <h3>WYBIERZ KOLOR KULKI</h3>
         
-        <div class="palette-group-title">Darmowe (Podstawowe):</div>
+        <div class="palette-group-title">DARMOWE:</div>
         <div class="colors-grid" id="gridFree"></div>
 
-        <div class="palette-group-title">Za 50 Punktów:</div>
-        <div class="colors-grid" id="grid50"></div>
-
-        <div class="palette-group-title">Za 100 Punktów (Odcienie):</div>
+        <div class="palette-group-title">ZA 100 PUNKTÓW:</div>
         <div class="colors-grid" id="grid100"></div>
 
-        <div class="palette-group-title">Za 200 Punktów (Unikalne):</div>
-        <div class="colors-grid" id="grid200"></div>
+        <div class="palette-group-title">ZA 250 PUNKTÓW:</div>
+        <div class="colors-grid" id="grid250"></div>
 
-        <div class="palette-group-title">Za 500 Punktów (Legenda RGB):</div>
+        <div class="palette-group-title">ZA 500 PUNKTÓW:</div>
         <div class="colors-grid" id="grid500"></div>
 
         <button class="btn-small cyan" style="padding:10px; margin-top:8px;" onclick="closeModal('colorModal')">Zamknij</button>
@@ -780,35 +797,44 @@
     let currentClan = null;
     const loadedSkins = {};
 
-    // Katalog kolorów z podziałem cenowym
+    // Nowa konfiguracja kolorów i wzorów
     const COLOR_TIERS = {
+      // Darmowe: 6 podstawowych kolorów
       free: [
-        { hex: "#ff2233", name: "Czerwony", cost: 0 },
-        { hex: "#00e640", name: "Zielony", cost: 0 },
-        { hex: "#0088ff", name: "Niebieski", cost: 0 },
-        { hex: "#ffd700", name: "Żółty", cost: 0 }
+        { id: "#ff2233", hex: "#ff2233", name: "Czerwony", cost: 0 },
+        { id: "#00e640", hex: "#00e640", name: "Zielony", cost: 0 },
+        { id: "#ffd700", hex: "#ffd700", name: "Żółty", cost: 0 },
+        { id: "#ff7700", hex: "#ff7700", name: "Pomarańczowy", cost: 0 },
+        { id: "#0088ff", hex: "#0088ff", name: "Niebieski", cost: 0 },
+        { id: "#9b30ff", hex: "#9b30ff", name: "Fioletowy", cost: 0 }
       ],
-      tier50: [
-        { hex: "#ff7700", name: "Pomarańczowy", cost: 50 },
-        { hex: "#9b30ff", name: "Fioletowy", cost: 50 },
-        { hex: "#ff3399", name: "Różowy", cost: 50 },
-        { hex: "#00e5ff", name: "Morski / Cyan", cost: 50 }
-      ],
+      // Za 100 pkt: Jasne i ciemne odcienie każdego z 6 kolorów
       tier100: [
-        { hex: "#880015", name: "Ciemna Czerwień", cost: 100 },
-        { hex: "#a6ff00", name: "Limonkowy", cost: 100 },
-        { hex: "#001f7a", name: "Granatowy", cost: 100 },
-        { hex: "#c8a100", name: "Musztardowy", cost: 100 },
-        { hex: "#b388ff", name: "Lawenda", cost: 100 }
+        { id: "#ff6677", hex: "#ff6677", name: "Czerwony Jasny", cost: 100 },
+        { id: "#8a0010", hex: "#8a0010", name: "Czerwony Ciemny", cost: 100 },
+        { id: "#66ff88", hex: "#66ff88", name: "Zielony Jasny (Limonka)", cost: 100 },
+        { id: "#00661a", hex: "#00661a", name: "Zielony Ciemny", cost: 100 },
+        { id: "#fff066", hex: "#fff066", name: "Żółty Jasny", cost: 100 },
+        { id: "#997a00", hex: "#997a00", name: "Żółty Ciemny", cost: 100 },
+        { id: "#ffa347", hex: "#ffa347", name: "Pomarańczowy Jasny", cost: 100 },
+        { id: "#994700", hex: "#994700", name: "Pomarańczowy Ciemny", cost: 100 },
+        { id: "#66b3ff", hex: "#66b3ff", name: "Niebieski Jasny", cost: 100 },
+        { id: "#003399", hex: "#003399", name: "Niebieski Ciemny (Granat)", cost: 100 },
+        { id: "#c280ff", hex: "#c280ff", name: "Fioletowy Jasny (Lawenda)", cost: 100 },
+        { id: "#4d0099", hex: "#4d0099", name: "Fioletowy Ciemny", cost: 100 }
       ],
-      tier200: [
-        { hex: "#ffffff", name: "Czysta Biel", cost: 200 },
-        { hex: "#0b0f19", name: "Obsidian", cost: 200 },
-        { hex: "#d4af37", name: "Złoty Metalik", cost: 200 },
-        { hex: "#00f59b", name: "Neon Szmaragd", cost: 200 }
+      // Za 250 pkt: Unikalne wzory (kropki, paski, szachownica, matrix)
+      tier250: [
+        { id: "pat_stripes", name: "Paski", cost: 250, className: "pat-stripes" },
+        { id: "pat_dots", name: "Kropki", cost: 250, className: "pat-dots" },
+        { id: "pat_checker", name: "Szachownica", cost: 250, className: "pat-checker" },
+        { id: "pat_matrix", name: "Matrix", cost: 250, className: "pat-matrix" }
       ],
+      // Za 500 pkt: Biały, Obsidian, RGB (Rainbow)
       tier500: [
-        { hex: "rainbow", name: "Tęcza RGB (Rainbow)", cost: 500, isRainbow: true }
+        { id: "#ffffff", hex: "#ffffff", name: "Biały", cost: 500 },
+        { id: "#070a13", hex: "#070a13", name: "Obsidian", cost: 500 },
+        { id: "rainbow", name: "RGB (Rainbow)", cost: 500, isRainbow: true, className: "rainbow-gradient" }
       ]
     };
 
@@ -838,6 +864,45 @@
     let foodEatenCount = 0;
     let lastPlayerMass = 0;
     let syncXpTimeout = null;
+
+    // Bufory deseni dla canvasa
+    const patternCanvases = {};
+    function getPatternCanvas(type) {
+      if (patternCanvases[type]) return patternCanvases[type];
+      const p = document.createElement("canvas");
+      const pc = p.getContext("2d");
+
+      if (type === "pat_stripes") {
+        p.width = 32; p.height = 32;
+        pc.fillStyle = "#ff0055"; pc.fillRect(0, 0, 32, 32);
+        pc.strokeStyle = "#1a1a2e"; pc.lineWidth = 10;
+        pc.beginPath();
+        pc.moveTo(-16, 16); pc.lineTo(16, -16);
+        pc.moveTo(0, 32); pc.lineTo(32, 0);
+        pc.moveTo(16, 48); pc.lineTo(48, 16);
+        pc.stroke();
+      } else if (type === "pat_dots") {
+        p.width = 24; p.height = 24;
+        pc.fillStyle = "#00e5ff"; pc.fillRect(0, 0, 24, 24);
+        pc.fillStyle = "#070b14";
+        pc.beginPath(); pc.arc(12, 12, 5, 0, Math.PI * 2); pc.fill();
+      } else if (type === "pat_checker") {
+        p.width = 24; p.height = 24;
+        pc.fillStyle = "#ffd700"; pc.fillRect(0, 0, 24, 24);
+        pc.fillStyle = "#11141f";
+        pc.fillRect(0, 0, 12, 12);
+        pc.fillRect(12, 12, 12, 12);
+      } else if (type === "pat_matrix") {
+        p.width = 20; p.height = 20;
+        pc.fillStyle = "#021204"; pc.fillRect(0, 0, 20, 20);
+        pc.fillStyle = "#00ff66";
+        pc.fillRect(4, 2, 4, 16);
+        pc.fillRect(12, 6, 4, 10);
+      }
+
+      patternCanvases[type] = p;
+      return p;
+    }
 
     function getSkinImage(url) {
       if (!url) return null;
@@ -869,26 +934,25 @@
         grid.innerHTML = "";
         items.forEach(item => {
           const isFree = item.cost === 0;
-          const isUnlocked = isFree || unlocked.includes(item.hex);
+          const isUnlocked = isFree || unlocked.includes(item.id);
           const tile = document.createElement("div");
 
           tile.className = "color-tile" + 
-            (chosenPlayerColor.toLowerCase() === item.hex.toLowerCase() ? " selected" : "") +
+            (chosenPlayerColor.toLowerCase() === item.id.toLowerCase() ? " selected" : "") +
             (!isUnlocked ? " locked" : "") +
-            (item.isRainbow ? " rainbow-gradient" : "");
+            (item.className ? " " + item.className : "");
 
-          if (!item.isRainbow) {
+          if (item.hex) {
             tile.style.backgroundColor = item.hex;
+            if (item.hex === "#ffffff") tile.style.border = "1px solid #334166";
           }
-          if (item.hex === "#ffffff") {
-            tile.style.border = "1px solid #334166";
-          }
+
           tile.setAttribute("data-cost", `🔒 ${item.cost}p`);
           tile.title = item.name + (!isUnlocked ? ` (Koszt: ${item.cost} pkt)` : "");
 
           tile.onclick = () => {
             if (isUnlocked) {
-              selectColor(item.hex);
+              selectColor(item.id);
             } else {
               buyColor(item);
             }
@@ -898,78 +962,84 @@
       }
 
       populateGrid("gridFree", COLOR_TIERS.free);
-      populateGrid("grid50", COLOR_TIERS.tier50);
       populateGrid("grid100", COLOR_TIERS.tier100);
-      populateGrid("grid200", COLOR_TIERS.tier200);
+      populateGrid("grid250", COLOR_TIERS.tier250);
       populateGrid("grid500", COLOR_TIERS.tier500);
     }
 
-    async function selectColor(colorHex) {
-      chosenPlayerColor = colorHex;
-      localStorage.setItem("bubblex_color", colorHex);
+    async function selectColor(colorId) {
+      chosenPlayerColor = colorId;
+      localStorage.setItem("bubblex_color", colorId);
       updateColorPreviewUI();
 
       if (currentProfile) {
-        currentProfile.selected_color = colorHex;
+        currentProfile.selected_color = colorId;
         try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
       }
 
       if (currentUser && sb) {
-        sb.from('profiles').update({ selected_color: colorHex }).eq('id', currentUser.id).then();
+        sb.from('profiles').update({ selected_color: colorId }).eq('id', currentUser.id).then();
       }
       renderColorPalette();
     }
 
     function updateColorPreviewUI() {
       const preview = document.getElementById("currentColorPreview");
+      preview.className = "color-preview-btn";
+      preview.style.backgroundColor = "";
+
       if (chosenPlayerColor === "rainbow") {
-        preview.className = "color-preview-btn rainbow-gradient";
-        preview.style.backgroundColor = "transparent";
+        preview.classList.add("rainbow-gradient");
+      } else if (chosenPlayerColor.startsWith("pat_")) {
+        const pType = chosenPlayerColor.replace("pat_", "");
+        if (pType === "stripes") preview.classList.add("pat-stripes");
+        else if (pType === "dots") preview.classList.add("pat-dots");
+        else if (pType === "checker") preview.classList.add("pat-checker");
+        else if (pType === "matrix") preview.classList.add("pat-matrix");
       } else {
-        preview.className = "color-preview-btn";
         preview.style.backgroundColor = chosenPlayerColor;
       }
     }
 
     async function buyColor(item) {
       if (!currentProfile || !currentUser) {
-        return alert("Musisz być zalogowany, aby odblokowywać kolory!");
+        return alert("Musisz być zalogowany, aby odblokowywać kolory i wzory!");
       }
       if ((currentProfile.points || 0) < item.cost) {
-        return alert(`Masz za mało punktów! Kolor "${item.name}" kosztuje ${item.cost} punktów (Twój stan: ${currentProfile.points || 0} pkt).`);
+        return alert(`Masz za mało punktów! "${item.name}" kosztuje ${item.cost} punktów (Twój stan: ${currentProfile.points || 0} pkt).`);
       }
 
-      const wantBuy = confirm(`Czy chcesz odblokować unikalny kolor "${item.name}" na stałe za ${item.cost} punktów?`);
+      const wantBuy = confirm(`Czy chcesz odblokować "${item.name}" na stałe za ${item.cost} punktów?`);
       if (!wantBuy) return;
 
       const newPts = currentProfile.points - item.cost;
-      const updatedUnlocked = [...(currentProfile.unlocked_colors || []), item.hex];
+      const updatedUnlocked = [...(currentProfile.unlocked_colors || []), item.id];
 
       const { error } = await sb
         .from('profiles')
         .update({ 
           points: newPts, 
           unlocked_colors: updatedUnlocked,
-          selected_color: item.hex 
+          selected_color: item.id 
         })
         .eq('id', currentUser.id);
 
-      if (error) return alert("Błąd zakupu koloru: " + error.message);
+      if (error) return alert("Błąd zakupu: " + error.message);
 
       currentProfile.points = newPts;
       currentProfile.unlocked_colors = updatedUnlocked;
-      currentProfile.selected_color = item.hex;
-      chosenPlayerColor = item.hex;
+      currentProfile.selected_color = item.id;
+      chosenPlayerColor = item.id;
 
       try {
         localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
-        localStorage.setItem("bubblex_color", item.hex);
+        localStorage.setItem("bubblex_color", item.id);
       } catch(e) {}
 
       updateColorPreviewUI();
       updateUserUI();
       renderColorPalette();
-      alert(`Kolor "${item.name}" został odblokowany na stałe i wybrany!`);
+      alert(`Odblokowano: "${item.name}"!`);
     }
 
     async function handleLogin() {
@@ -1956,11 +2026,8 @@
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
 
-      // Dynamiczny kolor Rainbow (płynna zmiana odcienia HSL w czasie)
+      // Dynamiczny kolor Rainbow
       const rainbowHue = (Date.now() / 15) % 360;
-      const activeColor = (chosenPlayerColor === "rainbow") 
-        ? `hsl(${rainbowHue}, 100%, 50%)` 
-        : chosenPlayerColor;
 
       for (const node of sortedNodes) {
         const nodeMoveSmooth = myCellIds.has(node.id)
@@ -1980,8 +2047,23 @@
           ctx.beginPath();
           ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
           
-          ctx.fillStyle = (isMyCell && currentProfile) ? activeColor : node.color;
-          ctx.fill();
+          if (isMyCell && currentProfile) {
+            if (chosenPlayerColor === "rainbow") {
+              ctx.fillStyle = `hsl(${rainbowHue}, 100%, 50%)`;
+              ctx.fill();
+            } else if (chosenPlayerColor.startsWith("pat_")) {
+              const pCanvas = getPatternCanvas(chosenPlayerColor);
+              const pattern = ctx.createPattern(pCanvas, "repeat");
+              ctx.fillStyle = pattern;
+              ctx.fill();
+            } else {
+              ctx.fillStyle = chosenPlayerColor;
+              ctx.fill();
+            }
+          } else {
+            ctx.fillStyle = node.color;
+            ctx.fill();
+          }
 
           const skinImg = (isMyCell && currentClan && currentClan.skin_url)
             ? getSkinImage(currentClan.skin_url)
@@ -2008,13 +2090,13 @@
 
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = "#ffffff";
+            ctx.fillStyle = (isMyCell && chosenPlayerColor === "#ffffff") ? "#11141f" : "#ffffff";
             ctx.font = `bold ${fontSize}px Arial`;
 
             if (node.name) {
               ctx.fillText(node.name, drawX, drawY - fontSize * 0.3);
               ctx.font = `bold ${Math.max(9, Math.floor(fontSize * 0.75))}px Arial`;
-              ctx.fillStyle = "rgba(255,255,255,0.85)";
+              ctx.fillStyle = (isMyCell && chosenPlayerColor === "#ffffff") ? "#222" : "rgba(255,255,255,0.85)";
               ctx.fillText(mass, drawX, drawY + fontSize * 0.6);
             } else {
               ctx.fillText(mass, drawX, drawY);
