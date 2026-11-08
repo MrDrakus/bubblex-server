@@ -111,7 +111,7 @@
       margin-bottom: 12px;
     }
     .input-nick {
-      flex: 1.4;
+      width: 100%;
       padding: 11px 14px;
       background: #090b12;
       border: 1px solid #23293d;
@@ -122,26 +122,12 @@
       transition: all 0.2s;
     }
     .input-nick:focus { border-color: #00d2ff; }
-    /* Styl zablokowanego nicku po zalogowaniu */
     .input-nick:read-only {
       background: #0d111d;
       border-color: #1e283d;
       color: #00d2ff;
       cursor: not-allowed;
       font-weight: 700;
-    }
-
-    .select-rank {
-      flex: 1;
-      padding: 11px 10px;
-      background: #090b12;
-      border: 1px solid #23293d;
-      border-radius: 8px;
-      color: #ffd700;
-      font-size: 12px;
-      font-weight: bold;
-      outline: none;
-      cursor: pointer;
     }
 
     .mode-container {
@@ -276,6 +262,33 @@
       font-size: 11px;
       color: #7e8ea8;
       text-align: left;
+    }
+
+    /* Modal Statystyk po zgonie */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .stat-box {
+      background: #090b12;
+      border: 1px solid #23293d;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #7e8ea8;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stat-val {
+      font-size: 20px;
+      font-weight: 800;
+      color: #00d2ff;
     }
 
     #score-hud {
@@ -414,6 +427,7 @@
 </head>
 <body>
 
+  <!-- Menu Główne -->
   <div class="overlay" id="menuOverlay">
     <div class="modal-card">
       <div class="brand-title">Bubble<span>X</span>.pl</div>
@@ -448,12 +462,6 @@
 
       <div class="row-inputs">
         <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
-        <select class="select-rank" id="rankSelect">
-          <option value="PLAYER">Ranga: Gracz</option>
-          <option value="VIP">Ranga: [VIP]</option>
-          <option value="SVIP" selected>Ranga: [SVIP] 👑</option>
-          <option value="ADMIN">Ranga: [ADMIN] 🔥</option>
-        </select>
       </div>
 
       <div class="action-row">
@@ -503,6 +511,31 @@
     </div>
   </div>
 
+  <!-- Modal Statystyk po zgonie -->
+  <div class="overlay" id="statsOverlay" style="display: none; z-index: 21;">
+    <div class="modal-card">
+      <div class="brand-title" style="color: #ff3344; text-align: center;">KONIEC GRY</div>
+      <div class="brand-tagline" style="text-align: center;">Twoja komórka została pochłonięta!</div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Maks. Masa</div>
+          <div class="stat-val" id="statMaxMass">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Czas Gry</div>
+          <div class="stat-val" id="statSurvivalTime">0:00</div>
+        </div>
+        <div class="stat-box" style="grid-column: span 2;">
+          <div class="stat-label">Pochłonięte Komórki</div>
+          <div class="stat-val" id="statFoodEaten">0</div>
+        </div>
+      </div>
+
+      <button class="btn-play" style="width: 100%;" onclick="closeStatsAndShowMenu()">ZAGRAJ PONOWNIE</button>
+    </div>
+  </div>
+
   <div id="minimap-hud" aria-label="Minimapa gry">
     <canvas id="minimap-canvas" width="156" height="156"></canvas>
     <div id="minimap-legend">
@@ -535,6 +568,11 @@
     let currentClan = null;
     const loadedSkins = {};
 
+    // Statystyki rozgrywki
+    let gameStartTime = 0;
+    let maxGameMass = 0;
+    let foodEatenCount = 0;
+
     function getSkinImage(url) {
       if (!url) return null;
       if (!loadedSkins[url]) {
@@ -547,6 +585,11 @@
 
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
     function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+    function closeStatsAndShowMenu() {
+      document.getElementById("statsOverlay").style.display = "none";
+      document.getElementById("menuOverlay").style.display = "flex";
+    }
 
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
@@ -654,7 +697,6 @@
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
 
-        // Wstaw stały nick z bazy i ZABLOKUJ jego edycję
         nickInput.value = currentProfile.username;
         nickInput.readOnly = true;
         nickInput.title = "Jesteś zalogowany - Twój nick jest przypisany do konta";
@@ -666,7 +708,6 @@
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
 
-        // Odblokuj pole dla gościa
         nickInput.readOnly = false;
         nickInput.value = "";
         nickInput.title = "";
@@ -1030,7 +1071,14 @@
         case 16: {
           const eatCount = view.getUint16(offset, true);
           offset += 2;
-          for (let i = 0; i < eatCount; i++) offset += 8;
+          for (let i = 0; i < eatCount; i++) {
+            const eaterId = view.getUint32(offset, true);
+            const victimId = view.getUint32(offset + 4, true);
+            offset += 8;
+            if (myCellIds.has(eaterId)) {
+              foodEatenCount++;
+            }
+          }
 
           while (true) {
             const id = view.getUint32(offset, true);
@@ -1084,15 +1132,28 @@
             myCellIds.delete(removeId);
           }
 
+          // Gracz został całkowicie zjedzony (ŚMIERĆ)
           if (isAlive && myCellIds.size === 0) {
             isAlive = false;
             stopEjecting();
             closeChat();
             chatPanel.style.display = "none";
             minimapHud.style.display = "none";
-            document.getElementById("menuOverlay").style.display = "flex";
             document.getElementById("score-hud").style.display = "none";
             document.getElementById("leaderboard").style.display = "none";
+
+            // Wyliczanie statystyk
+            const survivalSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
+            const mins = Math.floor(survivalSeconds / 60);
+            const secs = survivalSeconds % 60;
+            const formattedTime = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+            document.getElementById("statMaxMass").textContent = maxGameMass;
+            document.getElementById("statSurvivalTime").textContent = formattedTime;
+            document.getElementById("statFoodEaten").textContent = foodEatenCount;
+
+            // Wyświetlenie okna statystyk
+            document.getElementById("statsOverlay").style.display = "flex";
           }
           break;
         }
@@ -1117,7 +1178,12 @@
           const myId = view.getUint32(offset, true);
           myCellIds.add(myId);
           isAlive = true;
+          gameStartTime = Date.now();
+          maxGameMass = 0;
+          foodEatenCount = 0;
+
           document.getElementById("menuOverlay").style.display = "none";
+          document.getElementById("statsOverlay").style.display = "none";
           document.getElementById("score-hud").style.display = "block";
           document.getElementById("leaderboard").style.display = "block";
           chatPanel.style.display = "flex";
@@ -1244,7 +1310,6 @@
         minimapCtx.stroke();
       }
 
-      // Czerwona krawędź na minimapie
       minimapCtx.strokeStyle = "#ff2244";
       minimapCtx.lineWidth = 2;
       minimapCtx.strokeRect(left, top, plotW, plotH);
@@ -1325,7 +1390,7 @@
       }
       ctx.stroke();
 
-      // ================= CZERWONA LINIA BRZEGOWA MAPY =================
+      // Czerwona krawędź mapy
       const bW = mapBorder.maxX - mapBorder.minX;
       const bH = mapBorder.maxY - mapBorder.minY;
       
@@ -1340,7 +1405,6 @@
       ctx.lineWidth = 32;
       ctx.strokeRect(mapBorder.minX, mapBorder.minY, bW, bH);
       ctx.restore();
-      // ================================================================
 
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
@@ -1414,6 +1478,7 @@
 
       if (isAlive) {
         document.getElementById("scoreVal").textContent = totalMass;
+        if (totalMass > maxGameMass) maxGameMass = totalMass;
       }
 
       requestAnimationFrame(render);
@@ -1423,22 +1488,14 @@
       if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
 
       let finalNick = "";
-      const rank = document.getElementById("rankSelect").value;
-
       if (currentUser && currentProfile) {
-        // Gracz zalogowany: pobieramy nick z profilu, dodajemy tag klanu i LVL
         const lvl = currentProfile.level || 1;
         const clanTag = currentClan ? `[${currentClan.tag}] ` : "";
         finalNick = `${clanTag}${currentProfile.username} (LVL ${lvl})`;
       } else {
-        // Gość: bierze nick z pola tekstowego
         const inputVal = document.getElementById("nick").value.trim();
         finalNick = inputVal.length > 0 ? inputVal : "Gracz";
       }
-
-      if (rank === "VIP" && !finalNick.startsWith("[")) finalNick = `[VIP] ${finalNick}`;
-      else if (rank === "SVIP" && !finalNick.startsWith("[")) finalNick = `[SVIP] ${finalNick}`;
-      else if (rank === "ADMIN" && !finalNick.startsWith("[")) finalNick = `[ADMIN] ${finalNick}`;
 
       sendSpawn(finalNick);
     });
