@@ -31,8 +31,8 @@
 
     .modal-card {
       background: #11141f;
-      width: 420px;
-      padding: 26px 26px 20px 26px;
+      width: 440px;
+      padding: 24px 24px 20px 24px;
       border-radius: 20px;
       border: 1px solid #23293d;
       box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 210, 255, 0.15);
@@ -53,17 +53,17 @@
       font-size: 13px;
       color: #7e8ea8;
       text-align: left;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
-    /* Pasek profilu gracza - TYLKO NICK */
+    /* Pasek profilu gracza z punktami po prawej stronie */
     .user-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: #090b12;
       border: 1px solid #23293d;
-      padding: 10px 14px;
+      padding: 9px 12px;
       border-radius: 10px;
       margin-bottom: 10px;
       font-size: 13px;
@@ -71,10 +71,22 @@
     .user-info {
       text-align: left;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .user-info strong { 
       color: #00d2ff; 
       font-size: 14px;
+    }
+    .pts-pill {
+      background: rgba(255, 215, 0, 0.12);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      color: #ffd700;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 6px;
     }
     .auth-btn-group {
       display: flex;
@@ -95,20 +107,37 @@
     .btn-small.cyan { background: #00d2ff; color: #050608; border: none; }
     .btn-small.cyan:hover { background: #33dcff; }
 
-    /* Nowy kafelek z punktami */
-    .points-badge-box {
+    /* Kafelki z poziomami dla każdego trybu */
+    .mode-lvls-grid {
       display: none;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(255, 215, 0, 0.06);
-      border: 1px solid rgba(255, 215, 0, 0.25);
-      border-radius: 8px;
-      padding: 7px 12px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
       margin-bottom: 12px;
-      font-size: 12px;
     }
-    .points-badge-box .label { color: #94a3b8; font-weight: 600; }
-    .points-badge-box .val { color: #ffd700; font-weight: 800; font-size: 14px; }
+    .mode-lvl-card {
+      background: #090e18;
+      border: 1px solid #1e283d;
+      border-radius: 8px;
+      padding: 6px 4px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .mode-lvl-card.active {
+      border-color: #00d2ff;
+      background: rgba(0, 210, 255, 0.08);
+    }
+    .mode-lvl-name {
+      font-size: 10px;
+      color: #7e8ea8;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .mode-lvl-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: #00d2ff;
+    }
 
     .row-inputs {
       margin-bottom: 12px;
@@ -522,10 +551,11 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Pasek profilu gracza - TYLKO NICK -->
+      <!-- Pasek profilu gracza z punktami w pigułce -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
+          <span class="pts-pill" id="userPointsPill" style="display:none;">0 pkt</span>
         </div>
         <div class="auth-btn-group">
           <button class="btn-small" id="btnOpenClan" onclick="openModal('clanModal')" style="display: none;">Klan</button>
@@ -533,10 +563,24 @@
         </div>
       </div>
 
-      <!-- PUNKTY W OSOBNYM MIEJSCU -->
-      <div class="points-badge-box" id="userPointsBox">
-        <span class="label">Twoje Punkty:</span>
-        <span class="val" id="userPointsLabel">0 pkt</span>
+      <!-- KAFELKI Z POZIOMAMI NA KAŻDY TRYB (zastępują stary pasek punktów) -->
+      <div class="mode-lvls-grid" id="modeLvlsGrid">
+        <div class="mode-lvl-card active" id="cardLvlFfa">
+          <div class="mode-lvl-name">FFA</div>
+          <div class="mode-lvl-val" id="valLvlFfa">(1)</div>
+        </div>
+        <div class="mode-lvl-card" id="cardLvlMegasplit">
+          <div class="mode-lvl-name">MegaSplit</div>
+          <div class="mode-lvl-val" id="valLvlMegasplit">(1)</div>
+        </div>
+        <div class="mode-lvl-card" id="cardLvlHardcore">
+          <div class="mode-lvl-name">Hardcore</div>
+          <div class="mode-lvl-val" id="valLvlHardcore">(1)</div>
+        </div>
+        <div class="mode-lvl-card" id="cardLvlExperimental">
+          <div class="mode-lvl-name">Exp</div>
+          <div class="mode-lvl-val" id="valLvlExperimental">(1)</div>
+        </div>
       </div>
 
       <div id="server-status" class="status-connecting">Łączenie z serwerem gry...</div>
@@ -544,10 +588,10 @@
       <div class="mode-container">
         <span class="mode-label">Tryb rozgrywki</span>
         <select class="select-mode" id="modeSelect" onchange="switchMode(this.value)">
-          <option value="wss://bubblex-server.onrender.com">Tryb FFA (Standard)</option>
-          <option value="wss://bubblex-megasplit.onrender.com">MegaSplit (Instant Merge / 64 Kulek)</option>
-          <option value="wss://bubblex-hardcore.onrender.com">Hardcore (Większa Masa / Walka)</option>
-          <option value="wss://bubblex-experimental.onrender.com">Experimental (Wirusy-Matki)</option>
+          <option value="wss://bubblex-server.onrender.com" data-key="ffa">Tryb FFA (Standard)</option>
+          <option value="wss://bubblex-megasplit.onrender.com" data-key="megasplit">MegaSplit (Instant Merge / 64 Kulek)</option>
+          <option value="wss://bubblex-hardcore.onrender.com" data-key="hardcore">Hardcore (Większa Masa / Walka)</option>
+          <option value="wss://bubblex-experimental.onrender.com" data-key="experimental">Experimental (Wirusy-Matki)</option>
         </select>
       </div>
 
@@ -646,10 +690,10 @@
 
   <div id="score-hud">Masa: <span id="scoreVal">0</span></div>
 
-  <!-- Pasek Postępu Poziomu na dole ekranu (Sumowanie Masy) -->
+  <!-- Pasek Postępu Poziomu na dole ekranu -->
   <div id="xp-hud">
     <div class="xp-info-row">
-      <span class="xp-lvl-label">POZIOM <span id="hudLvlVal">1</span></span>
+      <span class="xp-lvl-label"><span id="hudModeName">FFA</span> | POZIOM <span id="hudLvlVal">1</span></span>
       <span class="xp-text"><span id="hudXpVal">0</span> / <span id="hudTargetVal">100</span> XP</span>
     </div>
     <div class="xp-bar-bg">
@@ -684,18 +728,26 @@
       if (cached) currentProfile = JSON.parse(cached);
     } catch(e) {}
 
+    let currentModeKey = "ffa";
+
+    // Przeliczniki trudności zdobywania XP w zależności od trybu
+    const MODE_SETTINGS = {
+      ffa:          { name: "FFA", baseTarget: 100, pow: 1.6, mult: 1.0 },
+      megasplit:    { name: "MegaSplit", baseTarget: 500, pow: 1.7, mult: 0.35 },
+      hardcore:     { name: "Hardcore", baseTarget: 150, pow: 1.65, mult: 0.6 },
+      experimental: { name: "Exp", baseTarget: 120, pow: 1.6, mult: 0.9 }
+    };
+
+    function getRequiredXpForMode(modeKey, lvl) {
+      const s = MODE_SETTINGS[modeKey] || MODE_SETTINGS.ffa;
+      return Math.round(s.baseTarget * Math.pow(lvl, s.pow));
+    }
+
     let gameStartTime = 0;
     let maxGameMass = 0;
     let foodEatenCount = 0;
-
-    // Poprzednia masa do wyliczania przyrostu (delty)
     let lastPlayerMass = 0;
     let syncXpTimeout = null;
-
-    // Funkcja wyliczająca wymaganą masę na dany poziom (im wyższy, tym trudniej)
-    function getRequiredXpForLevel(lvl) {
-      return Math.round(100 * Math.pow(lvl, 1.6));
-    }
 
     function getSkinImage(url) {
       if (!url) return null;
@@ -749,7 +801,7 @@
       
       updateUserUI();
       await loadUserData();
-      alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (" + (currentProfile.level || 1) + ")");
+      alert("Zalogowano pomyślnie jako: " + currentProfile.username);
     }
 
     async function handleRegister() {
@@ -834,77 +886,101 @@
 
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
-      const ptsLabel = document.getElementById("userPointsLabel");
-      const ptsBox = document.getElementById("userPointsBox");
+      const ptsPill = document.getElementById("userPointsPill");
       const btnOpenClan = document.getElementById("btnOpenClan");
       const btnLogout = document.getElementById("btnLogout");
       const bottomAuthBar = document.getElementById("bottomAuthBar");
       const guestNickBox = document.getElementById("guestNickBox");
       const userColorBox = document.getElementById("userColorBox");
+      const modeLvlsGrid = document.getElementById("modeLvlsGrid");
 
       if (currentProfile && currentProfile.username) {
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
-        ptsLabel.textContent = `${currentProfile.points || 0} pkt`;
-        ptsBox.style.display = "flex";
+        ptsPill.textContent = `${currentProfile.points || 0} pkt`;
+        ptsPill.style.display = "inline-block";
+
         btnOpenClan.style.display = "block";
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
-
         guestNickBox.style.display = "none";
         userColorBox.style.display = "flex";
+        modeLvlsGrid.style.display = "grid";
+
+        // Aktualizacja kafelków poziomów
+        document.getElementById("valLvlFfa").textContent = `(${currentProfile.level_ffa || 1})`;
+        document.getElementById("valLvlMegasplit").textContent = `(${currentProfile.level_megasplit || 1})`;
+        document.getElementById("valLvlHardcore").textContent = `(${currentProfile.level_hardcore || 1})`;
+        document.getElementById("valLvlExperimental").textContent = `(${currentProfile.level_experimental || 1})`;
+
+        highlightActiveModeCard();
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
-        ptsBox.style.display = "none";
+        ptsPill.style.display = "none";
         btnOpenClan.style.display = "none";
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
-
         guestNickBox.style.display = "block";
         userColorBox.style.display = "none";
+        modeLvlsGrid.style.display = "none";
         document.getElementById("nick").value = "";
       }
     }
 
-    // Aktualizacja paska poziomu na dole ekranu (SUMOWANIE MASY / XP)
+    function highlightActiveModeCard() {
+      const modes = ['ffa', 'megasplit', 'hardcore', 'experimental'];
+      modes.forEach(m => {
+        const card = document.getElementById(`cardLvl${m.charAt(0).toUpperCase() + m.slice(1)}`);
+        if (card) {
+          if (m === currentModeKey) card.classList.add("active");
+          else card.classList.remove("active");
+        }
+      });
+    }
+
+    // Dodawanie zdobytej masy do XP konkretnego trybu
     function addGainedMassToXp(currentMass) {
       if (!isAlive || !currentProfile) return;
 
-      // Dodawaj do ogólnej sumy tylko nowo zdobytą masę
+      const lvlProp = `level_${currentModeKey}`;
+      const xpProp = `xp_${currentModeKey}`;
+
       if (lastPlayerMass > 0 && currentMass > lastPlayerMass) {
         const delta = currentMass - lastPlayerMass;
-        currentProfile.total_xp = (currentProfile.total_xp || 0) + delta;
+        const multiplier = (MODE_SETTINGS[currentModeKey] || MODE_SETTINGS.ffa).mult;
+        const gainedXp = Math.max(1, Math.round(delta * multiplier));
 
-        let lvl = currentProfile.level || 1;
-        let reqXp = getRequiredXpForLevel(lvl);
+        currentProfile[xpProp] = (currentProfile[xpProp] || 0) + gainedXp;
+        let lvl = currentProfile[lvlProp] || 1;
+        let reqXp = getRequiredXpForMode(currentModeKey, lvl);
 
-        // Obsługa awansu
-        while (currentProfile.total_xp >= reqXp) {
-          currentProfile.total_xp -= reqXp;
+        while (currentProfile[xpProp] >= reqXp) {
+          currentProfile[xpProp] -= reqXp;
           lvl++;
-          currentProfile.level = lvl;
-          appendChatMessage("System", `AWANS! Osiągnięto poziom (${lvl})!`, true, "#00ff88");
+          currentProfile[lvlProp] = lvl;
+          appendChatMessage("System", `AWANS! [${MODE_SETTINGS[currentModeKey].name}] Poziom (${lvl})!`, true, "#00ff88");
         }
 
         try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
+        updateUserUI();
 
-        // Zapis do Supabase z opóźnieniem (debounce)
         if (currentUser && sb) {
           clearTimeout(syncXpTimeout);
           syncXpTimeout = setTimeout(() => {
-            sb.from('profiles').update({ 
-              level: currentProfile.level, 
-              total_xp: currentProfile.total_xp 
-            }).eq('id', currentUser.id).then();
+            const updatePayload = {};
+            updatePayload[lvlProp] = currentProfile[lvlProp];
+            updatePayload[xpProp] = currentProfile[xpProp];
+            sb.from('profiles').update(updatePayload).eq('id', currentUser.id).then();
           }, 1500);
         }
       }
       lastPlayerMass = currentMass;
 
-      // Rysowanie danych na HUD
-      const lvl = currentProfile.level || 1;
-      const currentXp = currentProfile.total_xp || 0;
-      const targetXp = getRequiredXpForLevel(lvl);
+      // Aktualizacja dolnego HUD
+      const lvl = currentProfile[lvlProp] || 1;
+      const currentXp = currentProfile[xpProp] || 0;
+      const targetXp = getRequiredXpForMode(currentModeKey, lvl);
 
+      document.getElementById("hudModeName").textContent = (MODE_SETTINGS[currentModeKey] || MODE_SETTINGS.ffa).name;
       document.getElementById("hudLvlVal").textContent = lvl;
       document.getElementById("hudXpVal").textContent = currentXp;
       document.getElementById("hudTargetVal").textContent = targetXp;
@@ -1267,6 +1343,11 @@
     }
 
     function switchMode(newUrl) {
+      const modeSelect = document.getElementById("modeSelect");
+      const selectedOption = modeSelect.options[modeSelect.selectedIndex];
+      currentModeKey = selectedOption.getAttribute("data-key") || "ffa";
+      highlightActiveModeCard();
+
       if (ws) {
         ws.onclose = null;
         ws.close();
@@ -1745,7 +1826,7 @@
 
       let finalNick = "";
       if (currentProfile && currentProfile.username) {
-        const lvl = currentProfile.level || 1;
+        const lvl = currentProfile[`level_${currentModeKey}`] || 1;
         const clanTag = currentClan ? `[${currentClan.tag}] ` : "";
         finalNick = `${clanTag}${currentProfile.username} (${lvl})`;
       } else {
