@@ -130,12 +130,36 @@
       transition: all 0.2s;
     }
     .input-nick:focus { border-color: #00d2ff; }
-    .input-nick:read-only {
-      background: #090f1a;
-      border-color: #00d2ff33;
-      color: #00d2ff;
-      cursor: not-allowed;
-      font-weight: 700;
+
+    /* Wybór koloru kulki */
+    .color-picker-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #090b12;
+      border: 1px solid #23293d;
+      padding: 8px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .color-picker-box span {
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+    .input-color {
+      -webkit-appearance: none;
+      border: none;
+      width: 38px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+    }
+    .input-color::-webkit-color-swatch-wrapper { padding: 0; }
+    .input-color::-webkit-color-swatch {
+      border: 1px solid #3b4b6b;
+      border-radius: 6px;
     }
 
     .mode-container {
@@ -274,7 +298,7 @@
       text-align: left;
     }
 
-    /* Modal statystyk */
+    /* Modal statystyk po zgonie */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -470,9 +494,16 @@
         </select>
       </div>
 
-      <div class="row-inputs">
-        <span class="input-label" id="nickFieldLabel">Nick w grze</span>
-        <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Wpisz nick jako gość...">
+      <!-- Widoczne tylko dla Gościa -->
+      <div class="row-inputs" id="guestNickBox">
+        <span class="input-label">Wpisz nick jako gość</span>
+        <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
+      </div>
+
+      <!-- Widoczne tylko dla zalogowanego: Wybór koloru kulki -->
+      <div class="color-picker-box" id="userColorBox" style="display: none;">
+        <span>Twój własny kolor kulki:</span>
+        <input type="color" id="playerColorInput" class="input-color" value="#00d2ff">
       </div>
 
       <div class="action-row">
@@ -481,8 +512,8 @@
 
       <div class="controls-hint">
         Myszka: <strong>Kierunek ruchu</strong><br>
-        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Jeden wyrzut | <strong>E</strong>: Makro<br>
-        <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
+        <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Wyrzut | <strong>E</strong>: Makro<br>
+        <strong>Enter</strong>: Czat (Odblokowanie: 10 pkt) | <strong>Esc</strong>: Zamknij czat
       </div>
 
       <!-- Dwa osobne przyciski na dole -->
@@ -491,7 +522,7 @@
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
-      <!-- 1. Modal Logowania (2 POLA) -->
+      <!-- Modal Logowania -->
       <div class="sub-modal" id="loginModal">
         <h3>LOGOWANIE DO KONTA</h3>
         <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
@@ -500,7 +531,7 @@
         <button class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
       </div>
 
-      <!-- 2. Modal Rejestracji (3 POLA) -->
+      <!-- Modal Rejestracji -->
       <div class="sub-modal" id="registerModal">
         <h3>STWÓRZ NOWE KONTO</h3>
         <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Wybierz unikalny nick...">
@@ -510,7 +541,7 @@
         <button class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
       </div>
 
-      <!-- 3. Modal Klanu -->
+      <!-- Modal Klanu -->
       <div class="sub-modal" id="clanModal">
         <h3>ZARZĄDZANIE KLANEM</h3>
         <input type="text" id="clanNameInput" class="sub-input" maxlength="20" placeholder="Nazwa klanu (np. Smoki)...">
@@ -575,7 +606,6 @@
     const SUPABASE_ANON_KEY = "sb_publishable_hI3Djw5k0CjO_Qj_O7MZ7Q_B406QGK_";
     const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-    // Próba odczytania zapamiętanego profilu z pamięci przeglądarki
     let currentUser = null;
     let currentProfile = null;
     let currentClan = null;
@@ -583,9 +613,7 @@
 
     try {
       const cached = localStorage.getItem("bubblex_profile");
-      if (cached) {
-        currentProfile = JSON.parse(cached);
-      }
+      if (cached) currentProfile = JSON.parse(cached);
     } catch(e) {}
 
     let gameStartTime = 0;
@@ -610,54 +638,30 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // Bezpośrednie logowanie
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
 
-      if (!username || !password) {
-        alert("Wpisz swój nick oraz hasło!");
-        return;
-      }
+      if (!username || !password) return alert("Wpisz swój nick oraz hasło!");
 
-      // 1. Pobieramy profil bezpośrednio
       const { data: profile, error: profileErr } = await sb
         .from('profiles')
         .select('*')
         .ilike('username', username)
         .maybeSingle();
 
-      if (profileErr) {
-        alert("Błąd bazy: " + profileErr.message);
-        return;
-      }
+      if (profileErr) return alert("Błąd bazy: " + profileErr.message);
+      if (!profile || !profile.email) return alert("Konto o nicku \"" + username + "\" nie istnieje!");
 
-      if (!profile || !profile.email) {
-        alert("Konto o nicku \"" + username + "\" nie istnieje!");
-        return;
-      }
-
-      // 2. Logujemy po wykrytym mailu
       const { data: authData, error: authErr } = await sb.auth.signInWithPassword({
         email: profile.email,
         password: password
       });
 
-      if (authErr) {
-        alert("Niepoprawne hasło logowania!");
-        return;
-      }
+      if (authErr) return alert("Niepoprawne hasło logowania!");
 
-      // 3. Zapisujemy dane do pamięci i localStorage
       currentUser = authData.user;
-      currentProfile = {
-        id: profile.id,
-        email: profile.email,
-        username: profile.username || username,
-        points: profile.points ?? 100,
-        level: profile.level ?? 1,
-        clan_id: profile.clan_id
-      };
+      currentProfile = profile;
 
       try {
         localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
@@ -668,27 +672,17 @@
       
       updateUserUI();
       await loadUserData();
-      alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (LVL " + currentProfile.level + ")");
+      alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (LVL " + (currentProfile.level || 1) + ")");
     }
 
-    // Rejestracja nowego konta
     async function handleRegister() {
       const username = document.getElementById("regUsername").value.trim();
       const email = document.getElementById("regEmail").value.trim().toLowerCase();
       const password = document.getElementById("regPassword").value.trim();
 
-      if (!username || !email || !password) {
-        alert("Wszystkie pola są wymagane!");
-        return;
-      }
-      if (username.length < 3) {
-        alert("Nick musi mieć minimum 3 znaki!");
-        return;
-      }
-      if (password.length < 6) {
-        alert("Hasło musi mieć co najmniej 6 znaków!");
-        return;
-      }
+      if (!username || !email || !password) return alert("Wszystkie pola są wymagane!");
+      if (username.length < 3) return alert("Nick musi mieć minimum 3 znaki!");
+      if (password.length < 6) return alert("Hasło musi mieć co najmniej 6 znaków!");
 
       const { data: existingUser } = await sb
         .from('profiles')
@@ -696,10 +690,7 @@
         .ilike('username', username)
         .maybeSingle();
 
-      if (existingUser) {
-        alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
-        return;
-      }
+      if (existingUser) return alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
 
       const { error } = await sb.auth.signUp({
         email,
@@ -707,10 +698,7 @@
         options: { data: { username } }
       });
 
-      if (error) {
-        alert("Błąd rejestracji: " + error.message);
-        return;
-      }
+      if (error) return alert("Błąd rejestracji: " + error.message);
 
       alert("Konto utworzone! Możesz się teraz zalogować.");
       closeModal('registerModal');
@@ -724,13 +712,10 @@
       currentUser = null;
       currentProfile = null;
       currentClan = null;
-      try {
-        localStorage.removeItem("bubblex_profile");
-      } catch(e) {}
+      try { localStorage.removeItem("bubblex_profile"); } catch(e) {}
       updateUserUI();
     }
 
-    // Pobieranie profilu i klanu
     async function loadUserData() {
       if (!sb) return;
       const { data: { session } } = await sb.auth.getSession();
@@ -752,9 +737,7 @@
 
         if (profile) {
           currentProfile = profile;
-          try {
-            localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
-          } catch(e) {}
+          try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
 
           if (profile.clan_id) {
             const { data: clanData } = await sb
@@ -772,7 +755,6 @@
       }
     }
 
-    // Kluczowa funkcja odświeżania UI i blokowania nicku
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
@@ -780,8 +762,8 @@
       const btnOpenClan = document.getElementById("btnOpenClan");
       const btnLogout = document.getElementById("btnLogout");
       const bottomAuthBar = document.getElementById("bottomAuthBar");
-      const nickInput = document.getElementById("nick");
-      const nickLabel = document.getElementById("nickFieldLabel");
+      const guestNickBox = document.getElementById("guestNickBox");
+      const userColorBox = document.getElementById("userColorBox");
 
       if (currentProfile && currentProfile.username) {
         const lvl = currentProfile.level || 1;
@@ -793,10 +775,9 @@
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
 
-        // BLOKADA POLA NICKU I PRZYPISANIE NICKU Z KONTA
-        nickLabel.textContent = "Twój nick (Konto zalogowane - brak możliwości zmiany)";
-        nickInput.value = currentProfile.username;
-        nickInput.readOnly = true;
+        // Ukrywamy pole nicku dla zalogowanego, pokazujemy próbnik koloru
+        guestNickBox.style.display = "none";
+        userColorBox.style.display = "flex";
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
         ptsLabel.textContent = `Punkty: 0`;
@@ -805,10 +786,43 @@
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
 
-        nickLabel.textContent = "Nick w grze";
-        nickInput.readOnly = false;
-        nickInput.value = "";
+        guestNickBox.style.display = "block";
+        userColorBox.style.display = "none";
+        document.getElementById("nick").value = "";
       }
+    }
+
+    // Zakup dostępu do czatu za 10 punktów
+    async function buyChatAccess() {
+      if (!currentProfile || !currentUser) {
+        alert("Musisz być zalogowany, aby odblokować czat!");
+        return false;
+      }
+      if ((currentProfile.points || 0) < 10) {
+        alert(`Masz za mało punktów! Odblokowanie czatu kosztuje 10 punktów (Twój stan: ${currentProfile.points || 0} pkt).`);
+        return false;
+      }
+
+      const wantBuy = confirm("Czy chcesz odblokować czat na stałe za 10 punktów?");
+      if (!wantBuy) return false;
+
+      const newPts = currentProfile.points - 10;
+      const { error } = await sb
+        .from('profiles')
+        .update({ points: newPts, chat_unlocked: true })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        alert("Błąd zakupu: " + error.message);
+        return false;
+      }
+
+      currentProfile.points = newPts;
+      currentProfile.chat_unlocked = true;
+      try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
+      updateUserUI();
+      alert("Czat został pomyślnie odblokowany na stałe!");
+      return true;
     }
 
     async function handleCreateClan() {
@@ -819,7 +833,7 @@
 
       if (!clanName || !clanTag) return alert("Wprowadź nazwę oraz tag klanu!");
       if (currentProfile.points < 500) return alert("Założenie klanu wymaga 500 punktów!");
-      if (!fileInput.files.length) return alert("Wybierz plik graficzny na skin klanu!");
+      if (!fileInput.files.length) return alert("Wybierz plik na herb klanu!");
 
       const file = fileInput.files[0];
       const btn = document.getElementById("btnCreateClan");
@@ -858,14 +872,11 @@
       }
     }
 
-    // Inicjalizacja przy starcie strony
     window.addEventListener("DOMContentLoaded", async () => {
-      // 1. Natychmiastowe pokazanie danych jeśli były w localStorage
       updateUserUI();
 
       if (!sb) return;
 
-      // 2. Obsługa sesji w tle
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         currentUser = session.user;
@@ -959,8 +970,15 @@
     const chatInput = document.getElementById("chat-input");
     let chatOpen = false;
 
-    function openChat() {
+    async function openChat() {
       if (!isConnected || !isAlive) return;
+
+      // Sprawdzenie czy gracz odblokował czat za 10 pkt
+      if (!currentProfile || !currentProfile.chat_unlocked) {
+        const bought = await buyChatAccess();
+        if (!bought) return;
+      }
+
       stopEjecting();
       chatOpen = true;
       chatInput.style.display = "block";
@@ -1016,13 +1034,13 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    window.addEventListener("keydown", (e) => {
+    window.addEventListener("keydown", async (e) => {
       if (e.isComposing) return;
       if (e.code === "Enter" && isAlive && isConnected) {
         e.preventDefault();
         if (e.repeat) return;
         if (chatOpen) submitChat();
-        else openChat();
+        else await openChat();
         return;
       }
       if (chatOpen) {
@@ -1518,6 +1536,7 @@
 
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
+      const chosenColor = document.getElementById("playerColorInput")?.value || "#00d2ff";
 
       for (const node of sortedNodes) {
         const nodeMoveSmooth = myCellIds.has(node.id)
@@ -1529,16 +1548,18 @@
         const drawX = node.renderX;
         const drawY = node.renderY;
         const drawSize = node.renderSize;
+        const isMyCell = myCellIds.has(node.id);
 
         if (node.isVirus) {
           drawVirus(drawX, drawY, drawSize);
         } else {
           ctx.beginPath();
           ctx.arc(drawX, drawY, drawSize, 0, Math.PI * 2);
-          ctx.fillStyle = node.color;
+          
+          // Użycie wybranego koloru gracza dla własnych kulek
+          ctx.fillStyle = (isMyCell && currentProfile) ? chosenColor : node.color;
           ctx.fill();
 
-          const isMyCell = myCellIds.has(node.id);
           const skinImg = (isMyCell && currentClan && currentClan.skin_url)
             ? getSkinImage(currentClan.skin_url)
             : null;
