@@ -56,7 +56,7 @@
       margin-bottom: 12px;
     }
 
-    /* Pasek profilu gracza */
+    /* Pasek profilu gracza z punktami po prawej stronie */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -242,7 +242,7 @@
       border-radius: 3px;
     }
 
-    /* Klasy CSS dla wzorów */
+    /* Wzory CSS */
     .pat-stripes {
       background: repeating-linear-gradient(45deg, #ff0055, #ff0055 6px, #1a1a2e 6px, #1a1a2e 12px);
     }
@@ -670,7 +670,7 @@
       <div class="controls-hint">
         Myszka: <strong>Kierunek ruchu</strong><br>
         <strong>Spacja</strong>: Podział masy | <strong>W</strong>: Wyrzut | <strong>E</strong>: Makro<br>
-        <strong>Enter</strong>: Czat (Odblokowanie: 10 pkt) | <strong>Esc</strong>: Zamknij czat
+        <strong>Enter</strong>: Czat | <strong>/pay nick kwota</strong>: Przelew (od 50 LVL)
       </div>
 
       <div class="bottom-auth-bar" id="bottomAuthBar">
@@ -782,7 +782,7 @@
 
   <div id="game-chat" aria-label="Czat gry">
     <div id="chat-messages" role="log"></div>
-    <input type="text" id="chat-input" maxlength="64" placeholder="Napisz wiadomość i naciśnij Enter..." autocomplete="off">
+    <input type="text" id="chat-input" maxlength="64" placeholder="Napisz wiadomość lub /pay nick kwota..." autocomplete="off">
   </div>
 
   <canvas id="cvs"></canvas>
@@ -797,9 +797,8 @@
     let currentClan = null;
     const loadedSkins = {};
 
-    // Nowa konfiguracja kolorów i wzorów
     const COLOR_TIERS = {
-      // Darmowe: 6 podstawowych kolorów
+      // Darmowe (6 kolorów)
       free: [
         { id: "#ff2233", hex: "#ff2233", name: "Czerwony", cost: 0 },
         { id: "#00e640", hex: "#00e640", name: "Zielony", cost: 0 },
@@ -823,14 +822,14 @@
         { id: "#c280ff", hex: "#c280ff", name: "Fioletowy Jasny (Lawenda)", cost: 100 },
         { id: "#4d0099", hex: "#4d0099", name: "Fioletowy Ciemny", cost: 100 }
       ],
-      // Za 250 pkt: Unikalne wzory (kropki, paski, szachownica, matrix)
+      // Za 250 pkt: Unikalne wzory
       tier250: [
         { id: "pat_stripes", name: "Paski", cost: 250, className: "pat-stripes" },
         { id: "pat_dots", name: "Kropki", cost: 250, className: "pat-dots" },
         { id: "pat_checker", name: "Szachownica", cost: 250, className: "pat-checker" },
         { id: "pat_matrix", name: "Matrix", cost: 250, className: "pat-matrix" }
       ],
-      // Za 500 pkt: Biały, Obsidian, RGB (Rainbow)
+      // Za 500 pkt: Biały, Obsidian, RGB
       tier500: [
         { id: "#ffffff", hex: "#ffffff", name: "Biały", cost: 500 },
         { id: "#070a13", hex: "#070a13", name: "Obsidian", cost: 500 },
@@ -865,7 +864,6 @@
     let lastPlayerMass = 0;
     let syncXpTimeout = null;
 
-    // Bufory deseni dla canvasa
     const patternCanvases = {};
     function getPatternCanvas(type) {
       if (patternCanvases[type]) return patternCanvases[type];
@@ -925,7 +923,6 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // Renderowanie siatki w modalu kolorów
     function renderColorPalette() {
       const unlocked = currentProfile?.unlocked_colors || [];
 
@@ -1100,6 +1097,7 @@
 
       if (existingUser) return alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
 
+      // Rejestracja z 0 punktów na start
       const { error } = await sb.auth.signUp({
         email,
         password,
@@ -1470,9 +1468,56 @@
       chatInput.blur();
     }
 
-    function submitChat() {
+    // Obsługa wiadomości oraz komendy /pay
+    async function submitChat() {
       const message = chatInput.value.trim().slice(0, 64);
-      if (message && isConnected && ws && ws.readyState === WebSocket.OPEN) {
+      if (!message) {
+        closeChat();
+        return;
+      }
+
+      // Komenda przelewu: /pay <nick> <kwota>
+      if (message.startsWith("/pay ")) {
+        if (!currentUser || !currentProfile) {
+          appendChatMessage("System", "Musisz być zalogowany, aby wysyłać punkty!", true, "#ff3344");
+          closeChat();
+          return;
+        }
+
+        const parts = message.split(" ");
+        if (parts.length < 3) {
+          appendChatMessage("System", "Użycie: /pay <nick> <kwota>", true, "#ffd700");
+          closeChat();
+          return;
+        }
+
+        const targetNick = parts[1];
+        const amount = parseInt(parts[2], 10);
+
+        if (isNaN(amount) || amount <= 0) {
+          appendChatMessage("System", "Podaj prawidłową liczbę punktów większą od 0!", true, "#ff3344");
+          closeChat();
+          return;
+        }
+
+        const { data, error } = await sb.rpc('transfer_points', {
+          target_username: targetNick,
+          amount: amount
+        });
+
+        if (error || !data.success) {
+          appendChatMessage("System", (error ? error.message : data.message), true, "#ff3344");
+        } else {
+          appendChatMessage("Bank", data.message, true, "#00ff88");
+          await loadUserData();
+        }
+
+        closeChat();
+        return;
+      }
+
+      // Zwykła wiadomość czatu gry
+      if (isConnected && ws && ws.readyState === WebSocket.OPEN) {
         const buffer = new ArrayBuffer(2 + (message.length + 1) * 2);
         const data = new DataView(buffer);
         data.setUint8(0, 99);
@@ -1517,7 +1562,7 @@
       if (e.code === "Enter" && isAlive && isConnected) {
         e.preventDefault();
         if (e.repeat) return;
-        if (chatOpen) submitChat();
+        if (chatOpen) await submitChat();
         else await openChat();
         return;
       }
@@ -2025,8 +2070,6 @@
 
       let totalMass = 0;
       const sortedNodes = Object.values(nodes).sort((a, b) => a.size - b.size);
-
-      // Dynamiczny kolor Rainbow
       const rainbowHue = (Date.now() / 15) % 360;
 
       for (const node of sortedNodes) {
