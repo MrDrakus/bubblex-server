@@ -706,23 +706,42 @@
       updateUserUI();
     }
 
+    // Pobieranie danych profilu i klanu z zabezpieczeniem awaryjnym
     async function loadUserData() {
       if (!currentUser || !sb) return;
-      const { data: profile } = await sb
-        .from('profiles')
-        .select('*, clans(*)')
-        .eq('id', currentUser.id)
-        .single();
 
-      currentProfile = profile;
-      if (profile && profile.clans) {
-        currentClan = profile.clans;
-      } else {
-        currentClan = null;
+      try {
+        const { data: profile, error } = await sb
+          .from('profiles')
+          .select('*, clans(*)')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Błąd pobierania profilu:", error);
+          return;
+        }
+
+        if (profile) {
+          currentProfile = profile;
+          currentClan = profile.clans || null;
+        } else {
+          // Zabezpieczenie awaryjne, jeśli profil nie został jeszcze wpisany do bazy
+          currentProfile = {
+            username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
+            points: 100,
+            level: 1
+          };
+          currentClan = null;
+        }
+
+        updateUserUI();
+      } catch (err) {
+        console.error("Błąd loadUserData:", err);
       }
-      updateUserUI();
     }
 
+    // Aktualizacja interfejsu (blokowanie nicku, pokazywanie LVL)
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
@@ -736,7 +755,7 @@
       if (currentUser && currentProfile) {
         const lvl = currentProfile.level || 1;
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
-        ptsLabel.textContent = `Punkty: ${currentProfile.points}`;
+        ptsLabel.textContent = `Punkty: ${currentProfile.points || 0}`;
         lvlBadge.textContent = `LVL ${lvl}`;
         lvlBadge.style.display = "inline-block";
         btnOpenClan.style.display = "block";
