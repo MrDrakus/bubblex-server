@@ -56,7 +56,7 @@
       margin-bottom: 14px;
     }
 
-    /* Pasek konta i klanu z LVL */
+    /* Pasek konta gracza */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -106,9 +106,17 @@
     .btn-small.cyan:hover { background: #33dcff; }
 
     .row-inputs {
-      display: flex;
-      gap: 10px;
       margin-bottom: 12px;
+      text-align: left;
+    }
+    .input-label {
+      font-size: 11px;
+      color: #7e8ea8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 5px;
     }
     .input-nick {
       width: 100%;
@@ -122,9 +130,11 @@
       transition: all 0.2s;
     }
     .input-nick:focus { border-color: #00d2ff; }
+    
+    /* Zablokowany nick po zalogowaniu */
     .input-nick:read-only {
-      background: #0d111d;
-      border-color: #1e283d;
+      background: #090f1a;
+      border-color: #00d2ff33;
       color: #00d2ff;
       cursor: not-allowed;
       font-weight: 700;
@@ -197,6 +207,7 @@
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
+    /* Dolne przyciski autoryzacji */
     .bottom-auth-bar {
       display: flex;
       gap: 10px;
@@ -230,6 +241,7 @@
       color: #06080f;
     }
 
+    /* Okienka modali */
     .sub-modal {
       display: none;
       position: absolute;
@@ -264,7 +276,7 @@
       text-align: left;
     }
 
-    /* Modal Statystyk po zgonie */
+    /* Modal po zgonie */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -433,7 +445,7 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Panel Konta Gracza z LVL -->
+      <!-- Pasek profilu gracza -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
@@ -461,7 +473,8 @@
       </div>
 
       <div class="row-inputs">
-        <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Twój nick...">
+        <span class="input-label" id="nickFieldLabel">Nick w grze</span>
+        <input type="text" class="input-nick" id="nick" maxlength="15" placeholder="Wpisz nick jako gość...">
       </div>
 
       <div class="action-row">
@@ -474,31 +487,32 @@
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
       </div>
 
+      <!-- Przyciski na dole gdy niezalogowany -->
       <div class="bottom-auth-bar" id="bottomAuthBar">
         <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Zaloguj się</button>
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Załóż konto</button>
       </div>
 
-      <!-- Modal Logowania (2 POLA) -->
+      <!-- 1. Modal Logowania (2 POLA: Nick + Hasło) -->
       <div class="sub-modal" id="loginModal">
-        <h3>LOGOWANIE</h3>
+        <h3>LOGOWANIE DO KONTA</h3>
         <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
-        <input type="password" id="loginPassword" class="sub-input" placeholder="Hasło...">
+        <input type="password" id="loginPassword" class="sub-input" placeholder="Twoje hasło...">
         <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleLogin()">Zaloguj się</button>
         <button class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
       </div>
 
-      <!-- Modal Rejestracji (3 POLA) -->
+      <!-- 2. Modal Rejestracji (3 POLA: Nick + E-mail + Hasło) -->
       <div class="sub-modal" id="registerModal">
-        <h3>REJESTRACJA</h3>
-        <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Twój nick w grze...">
-        <input type="email" id="regEmail" class="sub-input" placeholder="Twój e-mail...">
+        <h3>STWÓRZ NOWE KONTO</h3>
+        <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Wybierz unikalny nick...">
+        <input type="email" id="regEmail" class="sub-input" placeholder="Twój unikalny e-mail...">
         <input type="password" id="regPassword" class="sub-input" placeholder="Hasło (min. 6 znaków)...">
-        <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleRegister()">Załóż konto</button>
+        <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleRegister()">Zarejestruj konto</button>
         <button class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
       </div>
 
-      <!-- Modal Zarządzania Klanem -->
+      <!-- 3. Modal Zarządzania Klanem -->
       <div class="sub-modal" id="clanModal">
         <h3>ZARZĄDZANIE KLANEM</h3>
         <input type="text" id="clanNameInput" class="sub-input" maxlength="20" placeholder="Nazwa klanu (np. Smoki)...">
@@ -511,7 +525,7 @@
     </div>
   </div>
 
-  <!-- Modal Statystyk po zgonie -->
+  <!-- Ekran statystyk po zgonie -->
   <div class="overlay" id="statsOverlay" style="display: none; z-index: 21;">
     <div class="modal-card">
       <div class="brand-title" style="color: #ff3344; text-align: center;">KONIEC GRY</div>
@@ -568,7 +582,6 @@
     let currentClan = null;
     const loadedSkins = {};
 
-    // Statystyki rozgrywki
     let gameStartTime = 0;
     let maxGameMass = 0;
     let foodEatenCount = 0;
@@ -591,11 +604,13 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
+    // LOGOWANIE (Nick + Hasło)
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
-      if (!username || !password) return alert("Wpisz swój nick oraz hasło!");
+      if (!username || !password) return alert("Podaj nick oraz hasło!");
 
+      // 1. Wyszukanie adresu e-mail przypisanego do danego nicku
       const { data: profile, error: fetchErr } = await sb
         .from('profiles')
         .select('email')
@@ -603,42 +618,61 @@
         .maybeSingle();
 
       if (fetchErr || !profile || !profile.email) {
-        return alert("Nie znaleziono gracza o nicku: " + username);
+        return alert("Konto o nicku \"" + username + "\" nie istnieje!");
       }
 
+      // 2. Logowanie
       const { data, error } = await sb.auth.signInWithPassword({ 
         email: profile.email, 
         password 
       });
 
-      if (error) return alert("Niepoprawne hasło lub błąd logowania!");
+      if (error) return alert("Niepoprawne hasło logowania!");
       currentUser = data.user;
       closeModal('loginModal');
+      document.getElementById("loginPassword").value = "";
       await loadUserData();
     }
 
+    // REJESTRACJA (Nick + E-mail + Hasło z walidacją unikalności)
     async function handleRegister() {
       const username = document.getElementById("regUsername").value.trim();
-      const email = document.getElementById("regEmail").value.trim();
+      const email = document.getElementById("regEmail").value.trim().toLowerCase();
       const password = document.getElementById("regPassword").value.trim();
       
       if (!username || !email || !password) {
-        return alert("Do rejestracji wymagany jest nick, e-mail oraz hasło!");
+        return alert("Wszystkie pola (Nick, E-mail, Hasło) są wymagane!");
+      }
+      if (username.length < 3) {
+        return alert("Nick musi mieć minimum 3 znaki!");
       }
       if (password.length < 6) {
         return alert("Hasło musi mieć co najmniej 6 znaków!");
       }
 
-      const { data: existingUser } = await sb
+      // 1. Sprawdzenie czy nick jest już zajęty
+      const { data: nickExists } = await sb
         .from('profiles')
         .select('username')
         .ilike('username', username)
         .maybeSingle();
 
-      if (existingUser) {
-        return alert("Ten nick jest już zajęty! Wybierz inny.");
+      if (nickExists) {
+        return alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
       }
 
+      // 2. Sprawdzenie czy email jest już zajęty
+      const { data: emailExists } = await sb
+        .from('profiles')
+        .select('email')
+        .ilike('email', email)
+        .maybeSingle();
+
+      if (emailExists) {
+        return alert("Na ten adres e-mail zarejestrowano już konto! Użyj opcji logowania.");
+      }
+
+      // 3. Rejestracja w Supabase
       const { error } = await sb.auth.signUp({ 
         email, 
         password,
@@ -648,8 +682,11 @@
       });
       
       if (error) return alert("Błąd rejestracji: " + error.message);
-      alert(`Konto dla gracza ${username} (LVL 1) zostało utworzone! Możesz się teraz zalogować.`);
+      
+      alert("Konto dla gracza " + username + " zostało utworzone! Możesz się teraz zalogować.");
       closeModal('registerModal');
+      document.getElementById("loginUsername").value = username;
+      document.getElementById("regPassword").value = "";
       openModal('loginModal');
     }
 
@@ -678,6 +715,7 @@
       updateUserUI();
     }
 
+    // Aktualizacja interfejsu (blokowanie nicku, pokazywanie LVL)
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
@@ -686,6 +724,7 @@
       const btnLogout = document.getElementById("btnLogout");
       const bottomAuthBar = document.getElementById("bottomAuthBar");
       const nickInput = document.getElementById("nick");
+      const nickLabel = document.getElementById("nickFieldLabel");
 
       if (currentUser && currentProfile) {
         const lvl = currentProfile.level || 1;
@@ -697,9 +736,10 @@
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
 
+        // BLOKADA NICKU
+        nickLabel.textContent = "Twój przypisany nick (Konto zalogowane)";
         nickInput.value = currentProfile.username;
         nickInput.readOnly = true;
-        nickInput.title = "Jesteś zalogowany - Twój nick jest przypisany do konta";
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
         ptsLabel.textContent = `Punkty: 0`;
@@ -708,9 +748,10 @@
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
 
+        // ODBLOKOWANIE NICKU DLA GOŚCIA
+        nickLabel.textContent = "Nick w grze";
         nickInput.readOnly = false;
         nickInput.value = "";
-        nickInput.title = "";
       }
     }
 
@@ -721,8 +762,8 @@
       const fileInput = document.getElementById("clanSkinInput");
 
       if (!clanName || !clanTag) return alert("Wprowadź nazwę oraz tag klanu!");
-      if (currentProfile.points < 500) return alert("Założenie klanu wymaga 500 punktów! Zdobądź je lub doładuj.");
-      if (!fileInput.files.length) return alert("Wybierz plik graficzny na herb/skin klanu!");
+      if (currentProfile.points < 500) return alert("Założenie klanu wymaga 500 punktów!");
+      if (!fileInput.files.length) return alert("Wybierz plik graficzny na skin klanu!");
 
       const file = fileInput.files[0];
       const btn = document.getElementById("btnCreateClan");
@@ -1073,7 +1114,6 @@
           offset += 2;
           for (let i = 0; i < eatCount; i++) {
             const eaterId = view.getUint32(offset, true);
-            const victimId = view.getUint32(offset + 4, true);
             offset += 8;
             if (myCellIds.has(eaterId)) {
               foodEatenCount++;
@@ -1132,7 +1172,7 @@
             myCellIds.delete(removeId);
           }
 
-          // Gracz został całkowicie zjedzony (ŚMIERĆ)
+          // Śmierć gracza
           if (isAlive && myCellIds.size === 0) {
             isAlive = false;
             stopEjecting();
@@ -1142,17 +1182,14 @@
             document.getElementById("score-hud").style.display = "none";
             document.getElementById("leaderboard").style.display = "none";
 
-            // Wyliczanie statystyk
             const survivalSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
             const mins = Math.floor(survivalSeconds / 60);
             const secs = survivalSeconds % 60;
-            const formattedTime = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
             document.getElementById("statMaxMass").textContent = maxGameMass;
-            document.getElementById("statSurvivalTime").textContent = formattedTime;
+            document.getElementById("statSurvivalTime").textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             document.getElementById("statFoodEaten").textContent = foodEatenCount;
 
-            // Wyświetlenie okna statystyk
             document.getElementById("statsOverlay").style.display = "flex";
           }
           break;
