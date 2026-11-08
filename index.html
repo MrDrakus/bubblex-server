@@ -205,7 +205,7 @@
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
-    /* Dolne przyciski na samym dole karty */
+    /* Dolne przyciski */
     .bottom-auth-bar {
       display: flex;
       gap: 10px;
@@ -274,6 +274,7 @@
       text-align: left;
     }
 
+    /* Modal statystyk po zgonie */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -601,72 +602,96 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // LOGOWANIE (Nick + Hasło) za pomocą procedury RPC
+    // Bezpośrednie logowanie po nicku
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
-      if (!username || !password) return alert("Podaj nick oraz hasło!");
 
-      try {
-        const { data: userEmail, error: rpcErr } = await sb.rpc('get_email_by_username', { 
-          p_username: username 
-        });
-
-        if (rpcErr || !userEmail) {
-          return alert("Konto o nicku \"" + username + "\" nie zostało znalezione!");
-        }
-
-        const { data, error } = await sb.auth.signInWithPassword({ 
-          email: userEmail, 
-          password 
-        });
-
-        if (error) {
-          return alert("Niepoprawne hasło logowania!");
-        }
-
-        currentUser = data.user;
-        closeModal('loginModal');
-        document.getElementById("loginPassword").value = "";
-        await loadUserData();
-      } catch (err) {
-        alert("Błąd połączenia podczas logowania: " + err.message);
+      if (!username || !password) {
+        alert("Wpisz swój nick oraz hasło!");
+        return;
       }
+
+      // 1. Sprawdzenie adresu e-mail powiązanego z nickiem
+      const { data: profile, error: profileErr } = await sb
+        .from('profiles')
+        .select('email, username')
+        .ilike('username', username)
+        .maybeSingle();
+
+      if (profileErr) {
+        alert("Błąd bazy danych: " + profileErr.message);
+        return;
+      }
+
+      if (!profile || !profile.email) {
+        alert("Konto o nicku \"" + username + "\" nie istnieje!");
+        return;
+      }
+
+      // 2. Logowanie
+      const { data, error: authErr } = await sb.auth.signInWithPassword({
+        email: profile.email,
+        password: password
+      });
+
+      if (authErr) {
+        alert("Niepoprawne hasło logowania!");
+        return;
+      }
+
+      // 3. Po udanym logowaniu
+      currentUser = data.user;
+      closeModal('loginModal');
+      document.getElementById("loginPassword").value = "";
+      await loadUserData();
+      alert("Zalogowano pomyślnie jako " + profile.username + "!");
     }
 
-    // REJESTRACJA (Nick + E-mail + Hasło)
+    // Rejestracja nowego konta
     async function handleRegister() {
       const username = document.getElementById("regUsername").value.trim();
       const email = document.getElementById("regEmail").value.trim().toLowerCase();
       const password = document.getElementById("regPassword").value.trim();
-      
+
       if (!username || !email || !password) {
-        return alert("Wszystkie pola są wymagane!");
+        alert("Wszystkie pola są wymagane!");
+        return;
       }
       if (username.length < 3) {
-        return alert("Nick musi mieć minimum 3 znaki!");
+        alert("Nick musi mieć minimum 3 znaki!");
+        return;
       }
       if (password.length < 6) {
-        return alert("Hasło musi mieć co najmniej 6 znaków!");
+        alert("Hasło musi mieć co najmniej 6 znaków!");
+        return;
       }
 
-      // Sprawdzenie zajętości nicku przez procedurę
-      const { data: existingEmail } = await sb.rpc('get_email_by_username', { p_username: username });
-      if (existingEmail) {
-        return alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
+      // Sprawdzenie czy nick jest wolny
+      const { data: existingUser } = await sb
+        .from('profiles')
+        .select('username')
+        .ilike('username', username)
+        .maybeSingle();
+
+      if (existingUser) {
+        alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
+        return;
       }
 
-      const { error } = await sb.auth.signUp({ 
-        email, 
+      // Rejestracja w auth
+      const { error } = await sb.auth.signUp({
+        email,
         password,
-        options: {
-          data: { username }
-        }
+        options: { data: { username } }
       });
-      
-      if (error) return alert("Błąd rejestracji: " + error.message);
-      
-      alert("Konto dla gracza " + username + " zostało utworzone! Możesz się teraz zalogować.");
+
+      if (error) {
+        alert("Błąd rejestracji: " + error.message);
+        return;
+      }
+
+      alert("Konto utworzone! Możesz się teraz zalogować.");
       closeModal('registerModal');
       document.getElementById("loginUsername").value = username;
       document.getElementById("regPassword").value = "";
