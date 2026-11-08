@@ -602,7 +602,7 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // Bezpośrednie logowanie po nicku
+    // Bezpośrednie logowanie z natychmiastowym przypisaniem danych do interfejsu
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
@@ -612,10 +612,10 @@
         return;
       }
 
-      // 1. Sprawdzenie adresu e-mail powiązanego z nickiem
+      // 1. Pobieramy profil bezpośrednio
       const { data: profile, error: profileErr } = await sb
         .from('profiles')
-        .select('email, username')
+        .select('id, email, username, points, level')
         .ilike('username', username)
         .maybeSingle();
 
@@ -629,8 +629,8 @@
         return;
       }
 
-      // 2. Logowanie
-      const { data, error: authErr } = await sb.auth.signInWithPassword({
+      // 2. Logujemy po wykrytym mailu
+      const { data: authData, error: authErr } = await sb.auth.signInWithPassword({
         email: profile.email,
         password: password
       });
@@ -640,12 +640,21 @@
         return;
       }
 
-      // 3. Po udanym logowaniu
-      currentUser = data.user;
+      // 3. Natychmiastowe przypisanie danych do pamięci i aktualizacja UI
+      currentUser = authData.user;
+      currentProfile = {
+        username: profile.username || username,
+        points: profile.points ?? 100,
+        level: profile.level ?? 1
+      };
+
       closeModal('loginModal');
       document.getElementById("loginPassword").value = "";
+      
+      // Wymuszenie odświeżenia widoku
+      updateUserUI();
       await loadUserData();
-      alert("Zalogowano pomyślnie jako " + profile.username + "!");
+      alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (LVL " + currentProfile.level + ")");
     }
 
     // Rejestracja nowego konta
@@ -706,7 +715,7 @@
       updateUserUI();
     }
 
-    // Pobieranie danych profilu i klanu z zabezpieczeniem awaryjnym
+    // Pobieranie danych profilu i klanu z zabezpieczeniem
     async function loadUserData() {
       if (!currentUser || !sb) return;
 
@@ -725,8 +734,7 @@
         if (profile) {
           currentProfile = profile;
           currentClan = profile.clans || null;
-        } else {
-          // Zabezpieczenie awaryjne, jeśli profil nie został jeszcze wpisany do bazy
+        } else if (!currentProfile) {
           currentProfile = {
             username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
             points: 100,
