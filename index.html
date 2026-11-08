@@ -239,7 +239,7 @@
       color: #06080f;
     }
 
-    /* Okienka modali */
+    /* Modale */
     .sub-modal {
       display: none;
       position: absolute;
@@ -274,7 +274,7 @@
       text-align: left;
     }
 
-    /* Modal statystyk po zgonie */
+    /* Modal statystyk */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -485,13 +485,13 @@
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
       </div>
 
-      <!-- Dwa osobne przyciski na samym dole -->
+      <!-- Dwa osobne przyciski na dole -->
       <div class="bottom-auth-bar" id="bottomAuthBar">
         <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Logowanie</button>
         <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
-      <!-- 1. Modal Logowania (2 POLA: Nick + Hasło) -->
+      <!-- 1. Modal Logowania (2 POLA) -->
       <div class="sub-modal" id="loginModal">
         <h3>LOGOWANIE DO KONTA</h3>
         <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
@@ -500,7 +500,7 @@
         <button class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
       </div>
 
-      <!-- 2. Modal Rejestracji (3 POLA: Nick + E-mail + Hasło) -->
+      <!-- 2. Modal Rejestracji (3 POLA) -->
       <div class="sub-modal" id="registerModal">
         <h3>STWÓRZ NOWE KONTO</h3>
         <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Wybierz unikalny nick...">
@@ -575,10 +575,18 @@
     const SUPABASE_ANON_KEY = "sb_publishable_hI3Djw5k0CjO_Qj_O7MZ7Q_B406QGK_";
     const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
+    // Próba odczytania zapamiętanego profilu z pamięci przeglądarki
     let currentUser = null;
     let currentProfile = null;
     let currentClan = null;
     const loadedSkins = {};
+
+    try {
+      const cached = localStorage.getItem("bubblex_profile");
+      if (cached) {
+        currentProfile = JSON.parse(cached);
+      }
+    } catch(e) {}
 
     let gameStartTime = 0;
     let maxGameMass = 0;
@@ -602,7 +610,7 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // Bezpośrednie logowanie z natychmiastowym przypisaniem danych do interfejsu
+    // Bezpośrednie logowanie
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
@@ -615,12 +623,12 @@
       // 1. Pobieramy profil bezpośrednio
       const { data: profile, error: profileErr } = await sb
         .from('profiles')
-        .select('id, email, username, points, level')
+        .select('*')
         .ilike('username', username)
         .maybeSingle();
 
       if (profileErr) {
-        alert("Błąd bazy danych: " + profileErr.message);
+        alert("Błąd bazy: " + profileErr.message);
         return;
       }
 
@@ -640,18 +648,24 @@
         return;
       }
 
-      // 3. Natychmiastowe przypisanie danych do pamięci i aktualizacja UI
+      // 3. Zapisujemy dane do pamięci i localStorage
       currentUser = authData.user;
       currentProfile = {
+        id: profile.id,
+        email: profile.email,
         username: profile.username || username,
         points: profile.points ?? 100,
-        level: profile.level ?? 1
+        level: profile.level ?? 1,
+        clan_id: profile.clan_id
       };
+
+      try {
+        localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
+      } catch(e) {}
 
       closeModal('loginModal');
       document.getElementById("loginPassword").value = "";
       
-      // Wymuszenie odświeżenia widoku
       updateUserUI();
       await loadUserData();
       alert("Zalogowano pomyślnie jako: " + currentProfile.username + " (LVL " + currentProfile.level + ")");
@@ -676,7 +690,6 @@
         return;
       }
 
-      // Sprawdzenie czy nick jest wolny
       const { data: existingUser } = await sb
         .from('profiles')
         .select('username')
@@ -688,7 +701,6 @@
         return;
       }
 
-      // Rejestracja w auth
       const { error } = await sb.auth.signUp({
         email,
         password,
@@ -712,44 +724,55 @@
       currentUser = null;
       currentProfile = null;
       currentClan = null;
+      try {
+        localStorage.removeItem("bubblex_profile");
+      } catch(e) {}
       updateUserUI();
     }
 
-    // Pobieranie danych profilu i klanu z zabezpieczeniem
+    // Pobieranie profilu i klanu
     async function loadUserData() {
-      if (!currentUser || !sb) return;
+      if (!sb) return;
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session && !currentUser) {
+        if (!currentProfile) updateUserUI();
+        return;
+      }
+      if (session) currentUser = session.user;
 
       try {
-        const { data: profile, error } = await sb
-          .from('profiles')
-          .select('*, clans(*)')
-          .eq('id', currentUser.id)
-          .maybeSingle();
+        const uid = currentUser ? currentUser.id : (currentProfile ? currentProfile.id : null);
+        if (!uid) return;
 
-        if (error) {
-          console.error("Błąd pobierania profilu:", error);
-          return;
-        }
+        const { data: profile } = await sb
+          .from('profiles')
+          .select('*')
+          .eq('id', uid)
+          .maybeSingle();
 
         if (profile) {
           currentProfile = profile;
-          currentClan = profile.clans || null;
-        } else if (!currentProfile) {
-          currentProfile = {
-            username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
-            points: 100,
-            level: 1
-          };
-          currentClan = null;
-        }
+          try {
+            localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile));
+          } catch(e) {}
 
-        updateUserUI();
+          if (profile.clan_id) {
+            const { data: clanData } = await sb
+              .from('clans')
+              .select('*')
+              .eq('id', profile.clan_id)
+              .maybeSingle();
+            currentClan = clanData || null;
+          }
+        }
       } catch (err) {
         console.error("Błąd loadUserData:", err);
+      } finally {
+        updateUserUI();
       }
     }
 
-    // Aktualizacja interfejsu (blokowanie nicku, pokazywanie LVL)
+    // Kluczowa funkcja odświeżania UI i blokowania nicku
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
@@ -760,7 +783,7 @@
       const nickInput = document.getElementById("nick");
       const nickLabel = document.getElementById("nickFieldLabel");
 
-      if (currentUser && currentProfile) {
+      if (currentProfile && currentProfile.username) {
         const lvl = currentProfile.level || 1;
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
         ptsLabel.textContent = `Punkty: ${currentProfile.points || 0}`;
@@ -770,7 +793,8 @@
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
 
-        nickLabel.textContent = "Twój przypisany nick (Konto zalogowane)";
+        // BLOKADA POLA NICKU I PRZYPISANIE NICKU Z KONTA
+        nickLabel.textContent = "Twój nick (Konto zalogowane - brak możliwości zmiany)";
         nickInput.value = currentProfile.username;
         nickInput.readOnly = true;
       } else {
@@ -834,13 +858,31 @@
       }
     }
 
+    // Inicjalizacja przy starcie strony
     window.addEventListener("DOMContentLoaded", async () => {
+      // 1. Natychmiastowe pokazanie danych jeśli były w localStorage
+      updateUserUI();
+
       if (!sb) return;
+
+      // 2. Obsługa sesji w tle
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         currentUser = session.user;
         await loadUserData();
       }
+
+      sb.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+          currentUser = session.user;
+          await loadUserData();
+        } else if (event === "SIGNED_OUT") {
+          currentUser = null;
+          currentProfile = null;
+          currentClan = null;
+          updateUserUI();
+        }
+      });
     });
 
     const cvs = document.getElementById("cvs");
@@ -1556,7 +1598,7 @@
       if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
 
       let finalNick = "";
-      if (currentUser && currentProfile) {
+      if (currentProfile && currentProfile.username) {
         const lvl = currentProfile.level || 1;
         const clanTag = currentClan ? `[${currentClan.tag}] ` : "";
         finalNick = `${clanTag}${currentProfile.username} (LVL ${lvl})`;
