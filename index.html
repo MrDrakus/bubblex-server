@@ -56,36 +56,26 @@
       margin-bottom: 14px;
     }
 
-    /* Pasek profilu gracza */
+    /* Pasek profilu gracza - TYLKO NICK */
     .user-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: #090b12;
       border: 1px solid #23293d;
-      padding: 8px 12px;
+      padding: 10px 14px;
       border-radius: 10px;
-      margin-bottom: 12px;
-      font-size: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
     }
     .user-info {
       text-align: left;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      font-weight: 600;
     }
-    .user-info strong { color: #00d2ff; }
-    .badge-lvl {
-      display: inline-block;
-      background: linear-gradient(135deg, #ff0055, #ff5500);
-      color: #fff;
-      font-weight: 800;
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 6px;
-      margin-left: 4px;
+    .user-info strong { 
+      color: #00d2ff; 
+      font-size: 14px;
     }
-    .user-pts { color: #ffd700; font-weight: 700; }
     .auth-btn-group {
       display: flex;
       gap: 6px;
@@ -104,6 +94,21 @@
     .btn-small:hover { background: #263354; }
     .btn-small.cyan { background: #00d2ff; color: #050608; border: none; }
     .btn-small.cyan:hover { background: #33dcff; }
+
+    /* Nowy kafelek z punktami */
+    .points-badge-box {
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 215, 0, 0.06);
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      border-radius: 8px;
+      padding: 7px 12px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    .points-badge-box .label { color: #94a3b8; font-weight: 600; }
+    .points-badge-box .val { color: #ffd700; font-weight: 800; font-size: 14px; }
 
     .row-inputs {
       margin-bottom: 12px;
@@ -344,8 +349,8 @@
       bottom: 18px;
       left: 50%;
       transform: translateX(-50%);
-      width: min(440px, 86vw);
-      background: rgba(11, 15, 25, 0.85);
+      width: min(460px, 88vw);
+      background: rgba(11, 15, 25, 0.9);
       border: 1px solid #23293d;
       border-radius: 12px;
       padding: 8px 14px;
@@ -517,19 +522,21 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Pasek profilu gracza -->
+      <!-- Pasek profilu gracza - TYLKO NICK -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
-          <div>
-            <span id="userPointsLabel" class="user-pts">Punkty: 0</span>
-            <span id="userLevelBadge" class="badge-lvl" style="display:none;">1</span>
-          </div>
         </div>
         <div class="auth-btn-group">
           <button class="btn-small" id="btnOpenClan" onclick="openModal('clanModal')" style="display: none;">Klan</button>
           <button class="btn-small" id="btnLogout" onclick="logoutUser()" style="display: none;">Wyloguj</button>
         </div>
+      </div>
+
+      <!-- PUNKTY W OSOBNYM MIEJSCU -->
+      <div class="points-badge-box" id="userPointsBox">
+        <span class="label">Twoje Punkty:</span>
+        <span class="val" id="userPointsLabel">0 pkt</span>
       </div>
 
       <div id="server-status" class="status-connecting">Łączenie z serwerem gry...</div>
@@ -639,11 +646,11 @@
 
   <div id="score-hud">Masa: <span id="scoreVal">0</span></div>
 
-  <!-- Pasek Postępu Poziomu na dole ekranu -->
+  <!-- Pasek Postępu Poziomu na dole ekranu (Sumowanie Masy) -->
   <div id="xp-hud">
     <div class="xp-info-row">
       <span class="xp-lvl-label">POZIOM <span id="hudLvlVal">1</span></span>
-      <span class="xp-text"><span id="hudMassVal">0</span> / <span id="hudTargetVal">100</span> MASY</span>
+      <span class="xp-text"><span id="hudXpVal">0</span> / <span id="hudTargetVal">100</span> XP</span>
     </div>
     <div class="xp-bar-bg">
       <div class="xp-bar-fill" id="hudXpFill"></div>
@@ -681,9 +688,13 @@
     let maxGameMass = 0;
     let foodEatenCount = 0;
 
+    // Poprzednia masa do wyliczania przyrostu (delty)
+    let lastPlayerMass = 0;
+    let syncXpTimeout = null;
+
     // Funkcja wyliczająca wymaganą masę na dany poziom (im wyższy, tym trudniej)
-    function getRequiredMassForLevel(lvl) {
-      return Math.round(100 * Math.pow(lvl, 1.5));
+    function getRequiredXpForLevel(lvl) {
+      return Math.round(100 * Math.pow(lvl, 1.6));
     }
 
     function getSkinImage(url) {
@@ -824,7 +835,7 @@
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
-      const lvlBadge = document.getElementById("userLevelBadge");
+      const ptsBox = document.getElementById("userPointsBox");
       const btnOpenClan = document.getElementById("btnOpenClan");
       const btnLogout = document.getElementById("btnLogout");
       const bottomAuthBar = document.getElementById("bottomAuthBar");
@@ -832,11 +843,9 @@
       const userColorBox = document.getElementById("userColorBox");
 
       if (currentProfile && currentProfile.username) {
-        const lvl = currentProfile.level || 1;
         nameLabel.innerHTML = `Zalogowano: <strong>${currentProfile.username}</strong> ${currentClan ? `[${currentClan.tag}]` : ''}`;
-        ptsLabel.textContent = `Punkty: ${currentProfile.points || 0}`;
-        lvlBadge.textContent = `${lvl}`;
-        lvlBadge.style.display = "inline-block";
+        ptsLabel.textContent = `${currentProfile.points || 0} pkt`;
+        ptsBox.style.display = "flex";
         btnOpenClan.style.display = "block";
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
@@ -845,8 +854,7 @@
         userColorBox.style.display = "flex";
       } else {
         nameLabel.innerHTML = `Status: <strong>Gość</strong>`;
-        ptsLabel.textContent = `Punkty: 0`;
-        lvlBadge.style.display = "none";
+        ptsBox.style.display = "none";
         btnOpenClan.style.display = "none";
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
@@ -857,32 +865,52 @@
       }
     }
 
-    // Aktualizacja paska poziomu na dole ekranu i sprawdzanie awansu
-    function updateXpHud(currentMass) {
-      if (!isAlive) return;
+    // Aktualizacja paska poziomu na dole ekranu (SUMOWANIE MASY / XP)
+    function addGainedMassToXp(currentMass) {
+      if (!isAlive || !currentProfile) return;
 
-      const currentLvl = currentProfile ? (currentProfile.level || 1) : 1;
-      const targetMass = getRequiredMassForLevel(currentLvl);
+      // Dodawaj do ogólnej sumy tylko nowo zdobytą masę
+      if (lastPlayerMass > 0 && currentMass > lastPlayerMass) {
+        const delta = currentMass - lastPlayerMass;
+        currentProfile.total_xp = (currentProfile.total_xp || 0) + delta;
 
-      document.getElementById("hudLvlVal").textContent = currentLvl;
-      document.getElementById("hudMassVal").textContent = currentMass;
-      document.getElementById("hudTargetVal").textContent = targetMass;
+        let lvl = currentProfile.level || 1;
+        let reqXp = getRequiredXpForLevel(lvl);
 
-      const percent = Math.min(100, Math.max(0, (currentMass / targetMass) * 100));
-      document.getElementById("hudXpFill").style.width = `${percent}%`;
-
-      // Awans na wyższy poziom, gdy osiągnięto wymaganą masę
-      if (currentProfile && currentMass >= targetMass) {
-        const newLvl = currentLvl + 1;
-        currentProfile.level = newLvl;
-        try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
-        updateUserUI();
-
-        if (currentUser && sb) {
-          sb.from('profiles').update({ level: newLvl }).eq('id', currentUser.id).then();
+        // Obsługa awansu
+        while (currentProfile.total_xp >= reqXp) {
+          currentProfile.total_xp -= reqXp;
+          lvl++;
+          currentProfile.level = lvl;
+          appendChatMessage("System", `AWANS! Osiągnięto poziom (${lvl})!`, true, "#00ff88");
         }
-        appendChatMessage("System", `AWANS! Osiągnięto poziom (${newLvl})!`, true, "#00ff88");
+
+        try { localStorage.setItem("bubblex_profile", JSON.stringify(currentProfile)); } catch(e) {}
+
+        // Zapis do Supabase z opóźnieniem (debounce)
+        if (currentUser && sb) {
+          clearTimeout(syncXpTimeout);
+          syncXpTimeout = setTimeout(() => {
+            sb.from('profiles').update({ 
+              level: currentProfile.level, 
+              total_xp: currentProfile.total_xp 
+            }).eq('id', currentUser.id).then();
+          }, 1500);
+        }
       }
+      lastPlayerMass = currentMass;
+
+      // Rysowanie danych na HUD
+      const lvl = currentProfile.level || 1;
+      const currentXp = currentProfile.total_xp || 0;
+      const targetXp = getRequiredXpForLevel(lvl);
+
+      document.getElementById("hudLvlVal").textContent = lvl;
+      document.getElementById("hudXpVal").textContent = currentXp;
+      document.getElementById("hudTargetVal").textContent = targetXp;
+
+      const percent = Math.min(100, Math.max(0, (currentXp / targetXp) * 100));
+      document.getElementById("hudXpFill").style.width = `${percent}%`;
     }
 
     async function buyChatAccess() {
@@ -1359,6 +1387,7 @@
 
           if (isAlive && myCellIds.size === 0) {
             isAlive = false;
+            lastPlayerMass = 0;
             stopEjecting();
             closeChat();
             chatPanel.style.display = "none";
@@ -1403,12 +1432,13 @@
           gameStartTime = Date.now();
           maxGameMass = 0;
           foodEatenCount = 0;
+          lastPlayerMass = 0;
 
           document.getElementById("menuOverlay").style.display = "none";
           document.getElementById("statsOverlay").style.display = "none";
           document.getElementById("score-hud").style.display = "block";
           document.getElementById("leaderboard").style.display = "block";
-          document.getElementById("xp-hud").style.display = "block";
+          if (currentProfile) document.getElementById("xp-hud").style.display = "block";
           chatPanel.style.display = "flex";
           minimapHud.style.display = "block";
           break;
@@ -1704,7 +1734,7 @@
       if (isAlive) {
         document.getElementById("scoreVal").textContent = totalMass;
         if (totalMass > maxGameMass) maxGameMass = totalMass;
-        updateXpHud(totalMass);
+        addGainedMassToXp(totalMass);
       }
 
       requestAnimationFrame(render);
