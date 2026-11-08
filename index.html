@@ -56,7 +56,7 @@
       margin-bottom: 14px;
     }
 
-    /* Pasek konta gracza */
+    /* Pasek profilu gracza */
     .user-bar {
       display: flex;
       justify-content: space-between;
@@ -130,8 +130,6 @@
       transition: all 0.2s;
     }
     .input-nick:focus { border-color: #00d2ff; }
-    
-    /* Zablokowany nick po zalogowaniu */
     .input-nick:read-only {
       background: #090f1a;
       border-color: #00d2ff33;
@@ -207,7 +205,7 @@
     .status-connected { color: #00ff88; }
     .status-error { color: #ff3344; }
 
-    /* Dolne przyciski autoryzacji */
+    /* Dolne przyciski na samym dole karty */
     .bottom-auth-bar {
       display: flex;
       gap: 10px;
@@ -215,7 +213,7 @@
     }
     .btn-bottom-auth {
       flex: 1;
-      padding: 9px 12px;
+      padding: 10px 14px;
       border-radius: 8px;
       font-size: 13px;
       font-weight: 700;
@@ -276,7 +274,6 @@
       text-align: left;
     }
 
-    /* Modal po zgonie */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -445,7 +442,7 @@
       <div class="brand-title">Bubble<span>X</span>.pl</div>
       <div class="brand-tagline">Wybierz tryb gry i dołącz do zabawy</div>
 
-      <!-- Pasek profilu gracza -->
+      <!-- Pasek profilu gracza z LVL -->
       <div class="user-bar" id="userBar">
         <div class="user-info">
           <span id="userNameLabel">Status: <strong>Gość</strong></span>
@@ -487,10 +484,10 @@
         <strong>Enter</strong>: Czat | <strong>Esc</strong>: Zamknij czat
       </div>
 
-      <!-- Przyciski na dole gdy niezalogowany -->
+      <!-- Dwa osobne przyciski na samym dole -->
       <div class="bottom-auth-bar" id="bottomAuthBar">
-        <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Zaloguj się</button>
-        <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Załóż konto</button>
+        <button class="btn-bottom-auth btn-login-bottom" onclick="openModal('loginModal')">Logowanie</button>
+        <button class="btn-bottom-auth btn-reg-bottom" onclick="openModal('registerModal')">Rejestracja</button>
       </div>
 
       <!-- 1. Modal Logowania (2 POLA: Nick + Hasło) -->
@@ -512,7 +509,7 @@
         <button class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
       </div>
 
-      <!-- 3. Modal Zarządzania Klanem -->
+      <!-- 3. Modal Klanu -->
       <div class="sub-modal" id="clanModal">
         <h3>ZARZĄDZANIE KLANEM</h3>
         <input type="text" id="clanNameInput" class="sub-input" maxlength="20" placeholder="Nazwa klanu (np. Smoki)...">
@@ -604,44 +601,47 @@
       document.getElementById("menuOverlay").style.display = "flex";
     }
 
-    // LOGOWANIE (Nick + Hasło)
+    // LOGOWANIE (Nick + Hasło) za pomocą procedury RPC
     async function handleLogin() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
       if (!username || !password) return alert("Podaj nick oraz hasło!");
 
-      // 1. Wyszukanie adresu e-mail przypisanego do danego nicku
-      const { data: profile, error: fetchErr } = await sb
-        .from('profiles')
-        .select('email')
-        .ilike('username', username)
-        .maybeSingle();
+      try {
+        const { data: userEmail, error: rpcErr } = await sb.rpc('get_email_by_username', { 
+          p_username: username 
+        });
 
-      if (fetchErr || !profile || !profile.email) {
-        return alert("Konto o nicku \"" + username + "\" nie istnieje!");
+        if (rpcErr || !userEmail) {
+          return alert("Konto o nicku \"" + username + "\" nie zostało znalezione!");
+        }
+
+        const { data, error } = await sb.auth.signInWithPassword({ 
+          email: userEmail, 
+          password 
+        });
+
+        if (error) {
+          return alert("Niepoprawne hasło logowania!");
+        }
+
+        currentUser = data.user;
+        closeModal('loginModal');
+        document.getElementById("loginPassword").value = "";
+        await loadUserData();
+      } catch (err) {
+        alert("Błąd połączenia podczas logowania: " + err.message);
       }
-
-      // 2. Logowanie
-      const { data, error } = await sb.auth.signInWithPassword({ 
-        email: profile.email, 
-        password 
-      });
-
-      if (error) return alert("Niepoprawne hasło logowania!");
-      currentUser = data.user;
-      closeModal('loginModal');
-      document.getElementById("loginPassword").value = "";
-      await loadUserData();
     }
 
-    // REJESTRACJA (Nick + E-mail + Hasło z walidacją unikalności)
+    // REJESTRACJA (Nick + E-mail + Hasło)
     async function handleRegister() {
       const username = document.getElementById("regUsername").value.trim();
       const email = document.getElementById("regEmail").value.trim().toLowerCase();
       const password = document.getElementById("regPassword").value.trim();
       
       if (!username || !email || !password) {
-        return alert("Wszystkie pola (Nick, E-mail, Hasło) są wymagane!");
+        return alert("Wszystkie pola są wymagane!");
       }
       if (username.length < 3) {
         return alert("Nick musi mieć minimum 3 znaki!");
@@ -650,29 +650,12 @@
         return alert("Hasło musi mieć co najmniej 6 znaków!");
       }
 
-      // 1. Sprawdzenie czy nick jest już zajęty
-      const { data: nickExists } = await sb
-        .from('profiles')
-        .select('username')
-        .ilike('username', username)
-        .maybeSingle();
-
-      if (nickExists) {
+      // Sprawdzenie zajętości nicku przez procedurę
+      const { data: existingEmail } = await sb.rpc('get_email_by_username', { p_username: username });
+      if (existingEmail) {
         return alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
       }
 
-      // 2. Sprawdzenie czy email jest już zajęty
-      const { data: emailExists } = await sb
-        .from('profiles')
-        .select('email')
-        .ilike('email', email)
-        .maybeSingle();
-
-      if (emailExists) {
-        return alert("Na ten adres e-mail zarejestrowano już konto! Użyj opcji logowania.");
-      }
-
-      // 3. Rejestracja w Supabase
       const { error } = await sb.auth.signUp({ 
         email, 
         password,
@@ -715,7 +698,6 @@
       updateUserUI();
     }
 
-    // Aktualizacja interfejsu (blokowanie nicku, pokazywanie LVL)
     function updateUserUI() {
       const nameLabel = document.getElementById("userNameLabel");
       const ptsLabel = document.getElementById("userPointsLabel");
@@ -736,7 +718,6 @@
         btnLogout.style.display = "block";
         bottomAuthBar.style.display = "none";
 
-        // BLOKADA NICKU
         nickLabel.textContent = "Twój przypisany nick (Konto zalogowane)";
         nickInput.value = currentProfile.username;
         nickInput.readOnly = true;
@@ -748,7 +729,6 @@
         btnLogout.style.display = "none";
         bottomAuthBar.style.display = "flex";
 
-        // ODBLOKOWANIE NICKU DLA GOŚCIA
         nickLabel.textContent = "Nick w grze";
         nickInput.readOnly = false;
         nickInput.value = "";
@@ -1172,7 +1152,6 @@
             myCellIds.delete(removeId);
           }
 
-          // Śmierć gracza
           if (isAlive && myCellIds.size === 0) {
             isAlive = false;
             stopEjecting();
