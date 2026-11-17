@@ -681,10 +681,9 @@
       box-shadow: 0 22px 70px rgba(0,0,0,.72);
     }
     #colorModal .bx-shop-title { font-size: 17px; font-weight: 800; color: #f2f6ff; letter-spacing: .1px; }
-    #colorModal .bx-shop-subtitle { color: #94a8c2; font-size: 11px; line-height: 1.45; margin-top: 4px; }
     #colorModal .bx-skin-stage {
       position: relative;
-      height: 126px;
+      height: 152px;
       border: 1px solid #2a3a54;
       border-radius: 11px;
       overflow: hidden;
@@ -906,8 +905,7 @@
       <div class="sub-modal bx-shop-modal" id="colorModal" aria-label="Sklep kolorów i wzorów">
         <div>
           <div class="bx-shop-title">KOLORY I WZORY</div>
-          <div class="bx-shop-subtitle">Kliknij dowolny kolor, aby zobaczyć go na poruszającej się kulce. Sam podgląd nic nie kosztuje.</div>
-        </div>
+                  </div>
         <div class="bx-skin-stage">
           <canvas id="skinPreviewCanvas" width="760" height="252" aria-label="Animowany podgląd kulki z wybranym kolorem lub wzorem"></canvas>
         </div>
@@ -1379,9 +1377,9 @@
       c.restore();
 
       const item = previewSkinItem || COLOR_TIERS.free[0];
-      const x = w / 2 + Math.sin(seconds * 1.35) * 118;
-      const y = h / 2 + Math.sin(seconds * 2.1) * 7;
-      const radius = 77;
+      const x = w / 2 + Math.sin(seconds * 1.35) * 110;
+      const y = h / 2 + Math.sin(seconds * 2.1) * 6;
+      const radius = 58;
 
       c.save();
       c.shadowColor = 'rgba(0, 0, 0, .45)';
@@ -1409,12 +1407,12 @@
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillStyle = item.id === '#ffffff' ? '#11141f' : '#ffffff';
-      c.font = 'bold 25px Arial, sans-serif';
+      c.font = 'bold 22px Arial, sans-serif';
       const rawName = currentProfile?.username || 'Gracz';
       const name = rawName.length > 13 ? rawName.slice(0, 13) + '…' : rawName;
-      c.fillText(name, x, y - 13, radius * 1.8);
-      c.font = 'bold 19px Arial, sans-serif';
-      c.fillText('250', x, y + 20);
+      c.fillText(name, x, y - 10, radius * 1.8);
+      c.font = 'bold 16px Arial, sans-serif';
+      c.fillText('250', x, y + 15);
       c.restore();
 
       skinPreviewAnimationId = requestAnimationFrame(drawSkinPreview);
