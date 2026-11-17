@@ -3334,16 +3334,17 @@
 <!-- BubbleX.pl - POPRAWKA V4: klikalne kafelki trybów + avatar konturowy.
      ZASTĄP tym całym blokiem poprzedni blok V3 (bx-avatar-tryby-v3-style
      oraz bx-avatar-tryby-v3-script). NIE doklejaj V4 obok V3. -->
-<style id="bx-avatar-tryby-v4-style">
-  /* Lista rozwijana nadal istnieje i przechowuje adresy serwerów,
-     ale tryb wybieramy wyłącznie przez cztery kafelki. */
+
+<!-- BubbleX.pl: naprawa wyboru trybu przez cztery kafelki (V5).
+     ZASTAP tym caly stary blok V4: bx-avatar-tryby-v4-style + bx-avatar-tryby-v4-script.
+     Nie usuwaj kodu gry, panelu konta ani poprawki centrowania. -->
+<style id="bx-tryby-v5-style">
+  /* Oryginalna lista serwerow zostaje w kodzie, ale nie jest widoczna. */
   #menuOverlay .mode-container,
   #menuOverlay .bx-existing-mode-select,
-  #menuOverlay #modeSelect {
-    display: none !important;
-  }
+  #menuOverlay #modeSelect { display: none !important; }
 
-  /* Avatar: bez włosów i oczu, tylko kontur. */
+  /* Konturowy avatar bez oczu i wlosow (zachowany z V4). */
   #menuOverlay .bx-account-avatar {
     font-size: 0 !important;
     color: #28d3ff !important;
@@ -3354,118 +3355,130 @@
     height: 28px !important;
   }
 
-  /* Kafelki są faktycznymi polami kliknięcia. */
-  #menuOverlay .bx-mode-grid > * {
+  /* Kafelki dzialaja niezaleznie od klas nadanych przez starsze poprawki. */
+  #menuOverlay [data-bx-fixed-mode] {
     cursor: pointer !important;
     pointer-events: auto !important;
+    touch-action: manipulation;
     position: relative;
+    z-index: 2;
   }
-  #menuOverlay .bx-mode-grid > *:not(.bx-v4-selected) {
+  #menuOverlay [data-bx-fixed-mode]:not(.bx-final-selected) {
     background: #171e2b !important;
     border-color: #27354c !important;
     box-shadow: none !important;
+    color: #aabbd1 !important;
   }
-  #menuOverlay .bx-mode-grid > *.bx-v4-selected {
+  #menuOverlay [data-bx-fixed-mode].bx-final-selected {
     background: #113849 !important;
     border-color: #00ceff !important;
     color: #40dcff !important;
-    box-shadow: inset 0 0 0 1px rgba(0,210,255,.14) !important;
+    box-shadow: inset 0 0 0 1px rgba(0,210,255,.16) !important;
   }
-  #menuOverlay .bx-mode-grid > *:focus-visible {
-    outline: 2px solid #42d9ff !important;
+  #menuOverlay [data-bx-fixed-mode]:focus-visible {
+    outline: 2px solid #40dcff !important;
     outline-offset: 2px;
   }
 </style>
-<script id="bx-avatar-tryby-v4-script">
+<script id="bx-tryby-v5-script">
 (function () {
   'use strict';
 
-  const MODES = ['ffa', 'megasplit', 'hardcore', 'exp'];
-  const FALLBACK_URLS = {
+  const KEYS = ['ffa', 'megasplit', 'hardcore', 'exp'];
+  const URLS = {
     ffa: 'wss://bubblex-server.onrender.com',
     megasplit: 'wss://bubblex-megasplit.onrender.com',
     hardcore: 'wss://bubblex-hardcore.onrender.com',
     exp: 'wss://bubblex-experimental.onrender.com'
   };
 
-  function keyFor(text) {
-    const s = String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    if (/megasplit|mega[ -]?split|bubblex-megasplit/.test(s)) return 'megasplit';
-    if (/hardcore|bubblex-hardcore/.test(s)) return 'hardcore';
-    if (/experimental|\bexp\b|bubblex-experimental/.test(s)) return 'exp';
-    if (/\bffa\b|standard|bubblex-server(?:\.onrender)?/.test(s)) return 'ffa';
-    return null;
-  }
-
-  function getOverlay() {
+  function overlay() {
     return document.getElementById('menuOverlay') || document.querySelector('.bx-menu-2026');
   }
-
-  function getCards() {
-    const overlay = getOverlay();
-    if (!overlay) return [];
-    const grid = overlay.querySelector('.bx-mode-grid');
-    if (!grid) return [];
-    return Array.from(grid.children).filter(el => keyFor(el.dataset.mode || el.textContent));
+  function norm(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+  function modeKey(value) {
+    const s = norm(value).toLowerCase();
+    if (/^megasplit(?:lvl|\b)|mega[ -]?split|bubblex-megasplit/.test(s)) return 'megasplit';
+    if (/^hardcore(?:lvl|\b)|bubblex-hardcore/.test(s)) return 'hardcore';
+    if (/experimental|bubblex-experimental|^exp(?:lvl|\b)/.test(s)) return 'exp';
+    if (/^ffa(?:lvl|\b)|standard|bubblex-server(?:\.onrender)?/.test(s)) return 'ffa';
+    return null;
+  }
+  function looksLikeTile(element) {
+    // Na ekranie kafelki maja np. "MEGASPLIT LVL (1)".
+    // Nie zakladamy, ze maja klase bx-mode-grid lub sa przyciskami.
+    const t = norm(element.innerText || element.textContent);
+    return t.length < 85 &&
+      /^(FFA|MEGASPLIT|HARDCORE|EXP(?:ERIMENTAL)?)(?=\s|LVL|$)/i.test(t) &&
+      /LVL\s*\(?\s*\d+/i.test(t) &&
+      !element.closest('.mode-container, .bx-existing-mode-select, .controls-hint, .bx-controls');
   }
 
-  function getSelect() {
-    // Select może być ukryty przez CSS. Nadal można zmieniać jego value.
+  function findTiles() {
+    const menu = overlay();
+    if (!menu) return [];
+    const root = menu.querySelector('.bx-menu-card, .modal-card, .menu-card') || menu;
+    const items = Array.from(root.querySelectorAll('button, a, div, section, article, [role="button"]'))
+      .filter(looksLikeTile)
+      .map(el => ({ el, key: modeKey(el.dataset.mode || el.innerText || el.textContent) }))
+      .filter(item => KEYS.includes(item.key));
+
+    // Wybieramy CZTERY prostokaty majace wspolnego rodzica. Tak odrzucamy
+    // wewnetrzne napisy i wrappery, nawet w menu o innej strukturze HTML.
+    const groups = new Map();
+    for (const item of items) {
+      const parent = item.el.parentElement;
+      if (!groups.has(parent)) groups.set(parent, new Map());
+      groups.get(parent).set(item.key, item.el);
+    }
+    const complete = Array.from(groups.values()).filter(g => KEYS.every(k => g.has(k)));
+    if (complete.length) {
+      complete.sort((a, b) => {
+        const score = g => KEYS.reduce((n, k) => n +
+          (g.get(k).matches('.bx-mode-tile, [data-bx-fixed-mode]') ? 10 : 0) +
+          (g.get(k).matches('button, [role="button"]') ? 3 : 0), 0);
+        return score(b) - score(a);
+      });
+      return KEYS.map(key => ({ key, el: complete[0].get(key) }));
+    }
+
+    // Awaryjnie: kafelki nie musza byc w jednym kontenerze.
+    return KEYS.map(key => {
+      const options = items.filter(item => item.key === key);
+      options.sort((a, b) => {
+        const score = x => (x.el.matches('.bx-mode-tile') ? 20 : 0) +
+          (x.el.matches('button, [role="button"]') ? 10 : 0) +
+          (x.el.getBoundingClientRect().width >= 60 ? 3 : 0);
+        return score(b) - score(a);
+      });
+      return options[0] || null;
+    }).filter(Boolean);
+  }
+
+  function serverSelect() {
     const direct = document.getElementById('modeSelect');
     if (direct) return direct;
-    const overlay = getOverlay();
-    if (!overlay) return null;
-    return Array.from(overlay.querySelectorAll('select')).find(sel =>
-      Array.from(sel.options).filter(opt => keyFor(opt.textContent + ' ' + opt.value)).length >= 3
-    ) || null;
+    const root = overlay();
+    return root ? Array.from(root.querySelectorAll('select')).find(s =>
+      Array.from(s.options).filter(opt => /^wss?:\/\//i.test(opt.value)).length >= 3
+    ) : null;
   }
-
-  function matchingOption(select, key) {
-    if (!select) return null;
-    const options = Array.from(select.options);
-    return options.find(opt => keyFor(opt.textContent + ' ' + opt.value) === key) ||
-      (options.length === 4 ? options[MODES.indexOf(key)] : null);
+  function selectedKey(select) {
+    const opt = select && select.options[select.selectedIndex];
+    return opt ? modeKey(opt.value + ' ' + opt.textContent) : 'ffa';
   }
-
-  function highlight(key) {
-    getCards().forEach(card => {
-      const on = keyFor(card.dataset.mode || card.textContent) === key;
-      card.classList.toggle('bx-v4-selected', on);
-      card.classList.toggle('bx-actual-selected', on);
-      card.classList.toggle('bx-mode-selected', on);
-      card.classList.toggle('active', on);
-      card.setAttribute('aria-pressed', String(on));
-    });
-  }
-
-  function switchGameMode(key) {
-    const select = getSelect();
-    const option = matchingOption(select, key);
-    const newValue = option ? option.value : FALLBACK_URLS[key];
-    if (!newValue) return;
-
-    if (select && option) select.value = option.value;
-    highlight(key);
-
-    // To jest najważniejsza poprawka: wywołujemy prawdziwą funkcję
-    // przełączania serwera z gry, a NIE tylko zmieniamy podświetlenie.
-    // Nie wykonujemy dwóch przełączeń (direct + event) naraz.
-    if (typeof window.switchMode === 'function' && /^wss?:\/\//i.test(newValue)) {
-      window.switchMode(newValue);
-    } else if (select && option) {
-      // Dla wersji index.html, w której select obsługuje zmianę przez onchange.
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    } else {
-      console.error('BubbleX: nie znaleziono funkcji switchMode ani listy serwerów.');
-    }
+  function selectOption(select, key) {
+    return select && Array.from(select.options).find(opt =>
+      modeKey(opt.value + ' ' + opt.textContent) === key
+    );
   }
 
   function fixAvatar() {
-    const overlay = getOverlay();
-    if (!overlay) return;
-    const avatar = overlay.querySelector('.bx-account-avatar');
+    const menu = overlay();
+    const avatar = menu && menu.querySelector('.bx-account-avatar');
     if (!avatar || avatar.querySelector('svg.bx-contour-icon')) return;
-    avatar.replaceChildren();
     avatar.innerHTML = '<svg class="bx-contour-icon" viewBox="0 0 48 48" ' +
       'fill="none" stroke="currentColor" stroke-width="3" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -3474,71 +3487,98 @@
       '</svg>';
   }
 
-  function prepareCards() {
+  function prepareTiles() {
     fixAvatar();
-    const cards = getCards();
-    cards.forEach(card => {
-      if (card.dataset.bxV4Ready) return;
-      card.dataset.bxV4Ready = '1';
-      if (card.tagName !== 'BUTTON' && card.tagName !== 'A') {
-        card.setAttribute('role', 'button');
-        card.tabIndex = 0;
+    const tiles = findTiles();
+    for (const { el, key } of tiles) {
+      if (el.dataset.bxFixedMode !== key) el.dataset.bxFixedMode = key;
+      if (!/^(BUTTON|A)$/.test(el.tagName)) {
+        if (el.getAttribute('role') !== 'button') el.setAttribute('role', 'button');
+        if (!el.hasAttribute('tabindex')) el.tabIndex = 0;
       }
-    });
-    const select = getSelect();
-    if (select) {
-      const option = select.options[select.selectedIndex];
-      const key = option ? keyFor(option.textContent + ' ' + option.value) : 'ffa';
-      if (key) highlight(key);
+    }
+    return tiles;
+  }
+
+  function highlight(key) {
+    for (const { el, key: tileKey } of prepareTiles()) {
+      const active = key === tileKey;
+      el.classList.toggle('bx-final-selected', active);
+      el.classList.toggle('bx-mode-selected', active);
+      el.classList.toggle('bx-v4-selected', active);
+      el.classList.toggle('bx-actual-selected', active);
+      el.classList.toggle('active', active);
+      el.setAttribute('aria-pressed', String(active));
     }
   }
 
-  // Obsługujemy klik już na etapie CAPTURE. Działa nawet wtedy,
-  // gdy starszy skrypt menu podpina własny onclick do kafelków.
-  document.addEventListener('click', function (event) {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-    const card = target.closest('.bx-mode-grid > *');
-    if (!card || !card.closest('#menuOverlay, .bx-menu-2026')) return;
-    const key = keyFor(card.dataset.mode || card.textContent);
-    if (!key) return;
+  function activate(key) {
+    if (!KEYS.includes(key)) return;
+    const select = serverSelect();
+    const opt = selectOption(select, key);
+    const url = opt ? opt.value : URLS[key];
+    if (!url || !/^wss?:\/\//i.test(url)) return;
+
+    // Synchronizuj ukryta liste, aby pozniejsze klikniecie GRAJ
+    // uzywalo tego samego trybu co wybrany prostokat.
+    if (select && opt) select.value = opt.value;
+    highlight(key);
+
+    // W MultiOgar frontendzie prawdziwe przelaczenie robi switchMode(url).
+    // Funkcja z oryginalnego index.html zamyka stary socket i laczy nowy.
+    if (typeof window.switchMode === 'function') {
+      window.switchMode(url);
+    } else if (select && opt) {
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    } else {
+      console.error('BubbleX: brak funkcji switchMode i listy serwerow.');
+    }
+  }
+
+  function cardFromEvent(target) {
+    if (!(target instanceof Element)) return null;
+    const menu = overlay();
+    if (!menu || !menu.contains(target)) return null;
+    // Rozpoznanie po tekstach i LVL, a nie po klasie z poprzedniej poprawki.
+    return findTiles().find(item => item.el === target || item.el.contains(target)) || null;
+  }
+
+  // WINDOW + CAPTURE: wykonuje sie PRZED starszymi listenerami na document,
+  // ktore w poprzednich wersjach potrafily zatrzymac klikniecie.
+  window.addEventListener('click', function (event) {
+    const hit = cardFromEvent(event.target);
+    if (!hit) return;
     event.preventDefault();
-    event.stopPropagation();
     event.stopImmediatePropagation();
-    switchGameMode(key);
+    activate(hit.key);
   }, true);
 
-  document.addEventListener('keydown', function (event) {
+  window.addEventListener('keydown', function (event) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
-    const card = event.target instanceof Element ? event.target.closest('.bx-mode-grid > *') : null;
-    if (!card || /^(BUTTON|A)$/.test(card.tagName)) return;
-    if (!card.closest('#menuOverlay, .bx-menu-2026')) return;
+    const hit = cardFromEvent(event.target);
+    if (!hit) return;
     event.preventDefault();
-    switchGameMode(keyFor(card.dataset.mode || card.textContent));
+    event.stopImmediatePropagation();
+    activate(hit.key);
   }, true);
 
   function start() {
-    prepareCards();
-    const overlay = getOverlay();
-    if (!overlay) return;
-    const select = getSelect();
-    if (select) select.addEventListener('change', function () {
-      const option = select.options[select.selectedIndex];
-      if (option) highlight(keyFor(option.textContent + ' ' + option.value));
-    });
-
-    // Obsługa elementów menu dodawanych po zalogowaniu.
+    const menu = overlay();
+    if (!menu) return;
+    prepareTiles();
+    const select = serverSelect();
+    highlight(selectedKey(select) || 'ffa');
+    if (select) select.addEventListener('change', () => highlight(selectedKey(select) || 'ffa'));
     let scheduled = false;
     new MutationObserver(() => {
       if (scheduled) return;
       scheduled = true;
       queueMicrotask(() => {
         scheduled = false;
-        prepareCards();
+        prepareTiles();
       });
-    }).observe(overlay, { childList: true, subtree: true });
+    }).observe(menu, { childList: true, subtree: true });
   }
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start, { once: true });
   } else {
@@ -3546,7 +3586,6 @@
   }
 })();
 </script>
-
 
 </body>
 </html>
