@@ -2748,6 +2748,387 @@
   }, { once: true });
 })();
 </script>
+<!-- BUBBLEX – NOWY WYGLĄD MENU. Wklej przed końcowym </body> w aktualnym index.html. -->
+<style id="bubblex-menu-2026-style">
+  /* Tylko menu. Nie zmienia canvasa, mechaniki gry ani funkcji przycisków. */
+  .bx-menu-2026 {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    padding: 28px 15px 38px !important;
+    scrollbar-width: thin;
+  }
+  .bx-menu-2026 .bx-menu-card {
+    width: min(470px, 100%) !important;
+    max-width: 470px !important;
+    height: auto !important;
+    margin: 0 auto !important;
+    padding: 21px 23px 22px !important;
+    border: 1px solid #29344c !important;
+    border-radius: 20px !important;
+    background: #101520 !important;
+    color: #f1f6fc !important;
+    box-shadow: 0 24px 68px rgba(0,0,0,.66), 0 0 22px rgba(0,210,255,.06) !important;
+    text-align: left !important;
+  }
+  .bx-menu-2026 .bx-logo {
+    display: block !important;
+    width: 100% !important;
+    margin: 3px 0 3px !important;
+    text-align: center !important;
+    font-size: 35px !important;
+    line-height: 1.15 !important;
+    font-weight: 850 !important;
+    letter-spacing: -.8px;
+    color: #fff !important;
+  }
+  .bx-menu-2026 .bx-logo span { color: #00d2ff !important; }
+  .bx-menu-2026 .bx-subtitle {
+    display: block !important;
+    text-align: center !important;
+    width: 100% !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    color: #8da0b8 !important;
+    margin: 0 0 17px !important;
+  }
+  .bx-menu-2026 .bx-account-panel {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 9px 12px !important;
+    width: 100% !important;
+    margin: 0 0 16px !important;
+    padding: 14px 13px !important;
+    border: 1px solid #25334b !important;
+    border-radius: 13px !important;
+    background: #171e2b !important;
+  }
+  .bx-menu-2026 .bx-account-avatar {
+    display: flex;
+    width: 41px;
+    height: 41px;
+    flex: 0 0 41px;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #285e78;
+    border-radius: 50%;
+    background: #173849;
+    color: #28d3ff;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .bx-menu-2026 .bx-account-actions {
+    display: grid !important;
+    width: 100% !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-top: 4px !important;
+  }
+  .bx-menu-2026 .bx-account-button {
+    color: #e3eaf5 !important;
+    background: #242f43 !important;
+    border: 1px solid #324059 !important;
+    border-radius: 8px !important;
+    padding: 9px 7px !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .bx-menu-2026 .bx-account-button:hover {
+    background: #30415b !important;
+    border-color: #00bde7 !important;
+  }
+  .bx-menu-2026 .bx-account-ranking::before { content: '🏆 '; }
+  .bx-menu-2026 .bx-account-klan::before { content: '👥 ';  }
+  .bx-menu-2026 .bx-account-wyloguj::before { content: '↪ '; }
+  .bx-menu-2026 .bx-mode-heading {
+    color: #8295ad;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .65px;
+    margin: 8px 0 9px;
+  }
+  .bx-menu-2026 .bx-mode-grid {
+    display: grid !important;
+    width: 100% !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    margin: 0 0 15px !important;
+  }
+  .bx-menu-2026 .bx-mode-tile {
+    min-width: 0;
+    min-height: 67px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px;
+    text-align: center !important;
+    border: 1px solid #27354c !important;
+    border-radius: 9px !important;
+    background: #171e2b !important;
+    padding: 9px 4px !important;
+    color: #aabbd1 !important;
+    font-weight: 750 !important;
+    font-size: 10px !important;
+    line-height: 1.3;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .bx-menu-2026 .bx-mode-tile:hover { border-color: #29b5d8 !important; }
+  .bx-menu-2026 .bx-mode-tile.bx-mode-selected,
+  .bx-menu-2026 .bx-mode-tile.active,
+  .bx-menu-2026 .bx-mode-tile.selected,
+  .bx-menu-2026 .bx-mode-tile[aria-selected="true"] {
+    color: #40dcff !important;
+    background: #113849 !important;
+    border-color: #00ceff !important;
+    box-shadow: inset 0 0 0 1px rgba(0,210,255,.12);
+  }
+  /* Istniejące pola wyboru pozostają funkcjonalne. */
+  .bx-menu-2026 .mode-container,
+  .bx-menu-2026 .bx-existing-mode-select {
+    margin: 0 0 12px !important;
+  }
+  .bx-menu-2026 select,
+  .bx-menu-2026 input:not([type="color"]):not([type="checkbox"]) {
+    background: #111827;
+    border-color: #2b3850;
+    color: #dce9f5;
+  }
+  .bx-menu-2026 .bx-color-container {
+    border: 1px solid #25344d !important;
+    border-radius: 11px !important;
+    background: #171e2b !important;
+    padding: 12px !important;
+    margin: 0 0 13px !important;
+  }
+  .bx-menu-2026 .bx-color-swatches {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    vertical-align: middle;
+    margin: 2px 8px 2px 0;
+  }
+  .bx-menu-2026 .bx-color-swatch {
+    display: inline-block;
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.1);
+    cursor: pointer;
+    padding: 0;
+  }
+  .bx-menu-2026 .bx-color-swatch[aria-pressed="true"] {
+    border: 3px solid white;
+    box-shadow: 0 0 0 2px rgba(0,210,255,.38);
+  }
+  .bx-menu-2026 input[type="color"] {
+    width: 42px;
+    height: 30px;
+    vertical-align: middle;
+    border: 1px solid #51617b;
+    border-radius: 7px;
+    cursor: pointer;
+    background: transparent;
+  }
+  .bx-menu-2026 #btnPlay,
+  .bx-menu-2026 .btn-play {
+    display: block;
+    width: 100% !important;
+    min-height: 51px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    background: #14c9f5 !important;
+    color: #07121d !important;
+    font-weight: 850 !important;
+    font-size: 16px !important;
+    letter-spacing: .3px;
+    box-shadow: 0 5px 20px rgba(0,210,255,.1);
+  }
+  .bx-menu-2026 #btnPlay:disabled,
+  .bx-menu-2026 .btn-play:disabled {
+    background: #565c66 !important;
+    color: #0d1421 !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+  }
+  .bx-menu-2026 .bx-controls,
+  .bx-menu-2026 .controls-hint {
+    width: 100% !important;
+    margin: 13px 0 0 !important;
+    padding: 12px 8px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    text-align: center !important;
+    background: #080d16 !important;
+    color: #97a9bf !important;
+    font-size: 12px !important;
+    line-height: 1.8 !important;
+  }
+  .bx-menu-2026 .bx-controls strong,
+  .bx-menu-2026 .controls-hint strong {
+    color: #00d2ff !important;
+  }
+  @media (max-width: 480px) {
+    .bx-menu-2026 { padding: 12px 9px 20px !important; }
+    .bx-menu-2026 .bx-menu-card { padding: 17px 13px !important; }
+    .bx-menu-2026 .bx-logo { font-size: 31px !important; }
+    .bx-menu-2026 .bx-mode-grid { gap: 4px !important; }
+    .bx-menu-2026 .bx-mode-tile { font-size: 9px !important; padding: 7px 2px !important; }
+  }
+</style>
+<script id="bubblex-menu-2026-script">
+(function () {
+  'use strict';
+  // Zmieniamy WYŁĄCZNIE wygląd obecnych elementów; zachowujemy ich onclick i listenery.
+  const norm = el => (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+  function getOverlay() {
+    const known = document.getElementById('menuOverlay');
+    if (known) return known;
+    const card = document.querySelector('.modal-card, .menu-card');
+    return card ? card.closest('.overlay, .menu-overlay, [role="dialog"]') : null;
+  }
+
+  function decorate() {
+    const overlay = getOverlay();
+    if (!overlay) return;
+    const card = overlay.querySelector('.modal-card, .menu-card, .bx-menu-card');
+    if (!card) return;
+    overlay.classList.add('bx-menu-2026');
+    card.classList.add('bx-menu-card');
+
+    const logo = card.querySelector('.brand-title, .logo-title, .bx-logo') ||
+      Array.from(card.querySelectorAll('h1, h2')).find(el => norm(el).includes('bubblex.pl'));
+    if (logo) logo.classList.add('bx-logo');
+    const subtitle = card.querySelector('.brand-tagline, .bx-subtitle') ||
+      Array.from(card.querySelectorAll('div,p,small')).find(el =>
+        el.children.length === 0 && norm(el).includes('wybierz tryb gry i dołącz'));
+    if (subtitle) subtitle.classList.add('bx-subtitle');
+
+    const clickables = Array.from(card.querySelectorAll('button, a, [role="button"]'));
+    const findButton = label => clickables.find(el => norm(el).replace(/^[^\p{L}]*/u, '').startsWith(label));
+    const ranking = findButton('ranking');
+    const klan = findButton('klan');
+    const wyloguj = findButton('wyloguj');
+    const buttons = [ranking, klan, wyloguj];
+    const buttonNames = ['ranking', 'klan', 'wyloguj'];
+    buttons.forEach((button, index) => {
+      if (button) button.classList.add('bx-account-button', 'bx-account-' + buttonNames[index]);
+    });
+
+    // Znajdź najmniejszy istniejący panel zawierający dane konta i akcje.
+    let accountPanel = null;
+    if (buttons.every(Boolean)) {
+      const candidates = Array.from(card.querySelectorAll('div,section,article'))
+        .filter(el => el !== card && buttons.every(b => el.contains(b)) && norm(el).includes('zalogowano'))
+        .sort((a, b) => a.querySelectorAll('*').length - b.querySelectorAll('*').length);
+      accountPanel = candidates[0] || null;
+    }
+    if (accountPanel && !accountPanel.classList.contains('bx-account-panel')) {
+      accountPanel.classList.add('bx-account-panel');
+      // Avatar jest dekoracją i nie zastępuje istniejącego profilu.
+      const avatar = document.createElement('span');
+      avatar.className = 'bx-account-avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.textContent = '👤';
+      accountPanel.insertBefore(avatar, accountPanel.firstChild);
+    }
+    // Jeśli trzy przyciski są już w osobnym wierszu, zrób z niego 3 kafelki.
+    if (buttons.every(Boolean) && buttons.every(b => b.parentElement === buttons[0].parentElement)) {
+      const row = buttons[0].parentElement;
+      if (row !== accountPanel && row !== card) row.classList.add('bx-account-actions');
+    }
+
+    const modePattern = /^(ffa|megasplit|hardcore|exp(?:erimental)?)(?=\s|$)/i;
+    const modes = clickables.filter(el => modePattern.test(norm(el)) && el.id !== 'btnPlay');
+    if (modes.length === 4 && modes.every(el => el.parentElement === modes[0].parentElement)) {
+      const grid = modes[0].parentElement;
+      if (grid !== card) {
+        grid.classList.add('bx-mode-grid');
+        modes.forEach((el, index) => {
+          el.classList.add('bx-mode-tile');
+          if (!el.dataset.bxMenuWired) {
+            el.dataset.bxMenuWired = '1';
+            el.addEventListener('click', () => {
+              modes.forEach(item => item.classList.remove('bx-mode-selected'));
+              el.classList.add('bx-mode-selected');
+            });
+          }
+        });
+        if (!modes.some(el => el.classList.contains('bx-mode-selected'))) {
+          const current = modes.find(el => el.classList.contains('active') ||
+            el.classList.contains('selected') || el.getAttribute('aria-selected') === 'true') || modes[0];
+          current.classList.add('bx-mode-selected');
+        }
+        if (!card.querySelector('.bx-mode-heading') && !Array.from(card.querySelectorAll('*')).some(el => el.children.length === 0 && norm(el) === 'wybierz tryb')) {
+          const label = document.createElement('div');
+          label.className = 'bx-mode-heading';
+          label.textContent = 'WYBIERZ TRYB';
+          grid.insertAdjacentElement('beforebegin', label);
+        }
+      }
+    }
+
+    // Oryginalny input koloru i jego obsługa są zachowane.
+    const colorInput = card.querySelector('input[type="color"]');
+    if (colorInput && !card.querySelector('.bx-color-swatches')) {
+      let colorContainer = colorInput.closest('.color-row, .color-picker-row, .color-container, .color-section');
+      if (!colorContainer) colorContainer = colorInput.parentElement;
+      if (colorContainer && colorContainer !== card) colorContainer.classList.add('bx-color-container');
+      const swatches = document.createElement('span');
+      swatches.className = 'bx-color-swatches';
+      swatches.setAttribute('aria-label', 'Gotowe kolory');
+      for (const color of ['#00d2ff', '#eb41af', '#6aeb5b', '#ffcd38']) {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = 'bx-color-swatch';
+        swatch.style.backgroundColor = color;
+        swatch.title = color;
+        swatch.setAttribute('aria-label', 'Wybierz kolor ' + color);
+        swatch.setAttribute('aria-pressed', String(colorInput.value.toLowerCase() === color));
+        swatch.addEventListener('click', () => {
+          colorInput.value = color;
+          colorInput.dispatchEvent(new Event('input', { bubbles: true }));
+          colorInput.dispatchEvent(new Event('change', { bubbles: true }));
+          swatches.querySelectorAll('button').forEach(btn => btn.setAttribute('aria-pressed', String(btn === swatch)));
+        });
+        swatches.appendChild(swatch);
+      }
+      colorInput.insertAdjacentElement('beforebegin', swatches);
+    }
+
+    // Tylko wygląd podpowiedzi: cała treść sterowania pozostaje identyczna.
+    const controls = card.querySelector('.controls-hint, .bx-controls') ||
+      Array.from(card.querySelectorAll('div,section')).filter(el => {
+        const t = norm(el);
+        return t.includes('myszka:') && t.includes('spacja:') && t.includes('enter:') && t.length < 450;
+      }).sort((a, b) => a.querySelectorAll('*').length - b.querySelectorAll('*').length)[0];
+    if (controls) controls.classList.add('bx-controls');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', decorate, { once: true });
+  } else {
+    decorate();
+  }
+  // Odśwież wygląd po zalogowaniu i zmianie trybu (część menu ładuje się dynamicznie).
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = getOverlay();
+    if (!overlay) return;
+    let queued = false;
+    new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      queueMicrotask(() => { queued = false; decorate(); });
+    }).observe(overlay, { childList: true, subtree: true });
+  }, { once: true });
+})();
+</script>
 
 </body>
 </html>
