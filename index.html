@@ -659,6 +659,141 @@
       #score-hud { top: 205px; left: 15px; font-size: 16px; }
     }
 
+
+
+    /* BubbleX - sklep kolorów V2: czytelne ceny i podgląd przed zakupem */
+    #colorModal.bx-shop-modal {
+      /* Pełne okno sklepu, niezależne od wysokości głównej karty menu. */
+      position: fixed !important;
+      inset: auto !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      width: min(480px, calc(100vw - 24px));
+      height: min(745px, calc(100vh - 30px));
+      max-height: none !important;
+      justify-content: flex-start;
+      gap: 10px;
+      overflow: hidden !important;
+      padding: 18px 17px 14px;
+      text-align: left;
+      background: #111826;
+      box-shadow: 0 22px 70px rgba(0,0,0,.72);
+    }
+    #colorModal .bx-shop-title { font-size: 17px; font-weight: 800; color: #f2f6ff; letter-spacing: .1px; }
+    #colorModal .bx-shop-subtitle { color: #94a8c2; font-size: 11px; line-height: 1.45; margin-top: 4px; }
+    #colorModal .bx-skin-stage {
+      position: relative;
+      height: 126px;
+      border: 1px solid #2a3a54;
+      border-radius: 11px;
+      overflow: hidden;
+      background: #080f1b;
+      flex: 0 0 auto;
+    }
+    #colorModal #skinPreviewCanvas { width: 100%; height: 100%; display: block; }
+    #colorModal .bx-preview-title-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; flex-wrap: wrap;
+    }
+    #colorModal .bx-skin-name { font-weight: 800; font-size: 13px; color: #f2f6ff; }
+    #colorModal .bx-skin-state {
+      color: #b5c6d9;
+      border: 1px solid #324056;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #1a2535;
+      white-space: nowrap;
+    }
+    #colorModal .bx-shop-main-action {
+      width: 100%; height: 37px; border: 0; border-radius: 9px;
+      background: #16c5ec; color: #061525; font-weight: 800; font-size: 12px;
+      cursor: pointer; transition: background .15s, transform .15s;
+      flex-shrink: 0;
+    }
+    #colorModal .bx-shop-main-action:hover:not(:disabled) { background: #4ce0ff; }
+    #colorModal .bx-shop-main-action:active:not(:disabled) { transform: scale(.99); }
+    #colorModal .bx-shop-main-action:disabled {
+      background: #263447; color: #95a7bc; cursor: default;
+    }
+    #colorModal .bx-shop-scroll {
+      overflow-y: auto; overflow-x: hidden; min-height: 80px; flex: 1 1 auto;
+      padding: 0 4px 5px 0; scrollbar-width: thin; scrollbar-color: #3c536f transparent;
+    }
+    #colorModal .bx-shop-tier-heading {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 8px; margin: 13px 0 7px;
+    }
+    #colorModal .bx-shop-tier-heading:first-child { margin-top: 3px; }
+    #colorModal .bx-shop-tier-heading span {
+      color: #d6e1f0; font-size: 11px; letter-spacing: .4px;
+      font-weight: 800;
+    }
+    #colorModal .bx-shop-tier-heading small {
+      font-size: 10px; font-weight: 700; color: #9cadc3;
+    }
+    #colorModal .colors-grid-6,
+    #colorModal .colors-grid-4,
+    #colorModal .colors-grid-3 { gap: 7px; margin-bottom: 7px; }
+    #colorModal .color-tile {
+      height: 37px;
+      border: 2px solid #27344a;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+      border-radius: 8px;
+      outline: none;
+      transition: border-color .15s, transform .15s, box-shadow .15s;
+      font-size: 10px;
+    }
+    #colorModal .color-tile:hover { transform: translateY(-1px); border-color: #7f9bb9; }
+    #colorModal .color-tile:focus-visible { outline: 2px solid #36d7ff; outline-offset: 2px; }
+    #colorModal .color-tile.selected {
+      border-color: #84eab1 !important;
+      box-shadow: 0 0 0 1px rgba(31,219,133,.25);
+    }
+    #colorModal .color-tile.previewing {
+      border-color: #25d6ff !important;
+      box-shadow: 0 0 0 2px rgba(37,214,255,.26);
+    }
+    #colorModal .color-tile.locked::after {
+      content: '🔒';
+      position: absolute;
+      top: 3px; right: 4px;
+      background: rgba(9,15,27,.45);
+      border-radius: 5px;
+      padding: 2px 3px;
+      font-size: 10px;
+      line-height: 1;
+      opacity: .75;
+      color: #d5deeb;
+    }
+    #colorModal .color-tile.selected::before {
+      content: '✓'; position: absolute; left: 5px; top: 3px;
+      font: bold 11px Arial, sans-serif;
+      color: #eafff4; background: rgba(12,70,49,.72);
+      border-radius: 50%; width: 15px; height: 15px; line-height: 15px;
+    }
+    #colorModal .bx-shop-footer {
+      flex: 0 0 auto;
+      display: flex; align-items: center; gap: 10px;
+      justify-content: space-between;
+      border-top: 1px solid #25334b; padding-top: 10px;
+    }
+    #colorModal .bx-shop-wallet { font-size: 11px; color: #91a4bd; }
+    #colorModal .bx-shop-close {
+      padding: 8px 13px; border: 1px solid #2d3d58;
+      border-radius: 8px; font-weight: 700; color: #d8e7f7;
+      background: #1a2639; cursor: pointer;
+    }
+    #colorModal .bx-shop-close:hover { background: #2a3b55; }
+    @media (max-height: 650px) {
+      #colorModal.bx-shop-modal { padding: 10px 14px; gap: 6px; }
+      #colorModal .bx-skin-stage { height: 94px; }
+      #colorModal .bx-shop-title { font-size: 15px; }
+      #colorModal .bx-shop-main-action { height: 32px; }
+    }
+
     canvas { display: block; }
   </style>
 </head>
@@ -767,23 +902,37 @@
         <button class="btn-small cyan" style="padding:10px; margin-top:6px;" onclick="closeModal('rankingModal')">Wróć</button>
       </div>
 
-      <!-- Modal Palety Kolorów -->
-      <div class="sub-modal" id="colorModal" style="max-height: 92vh; overflow-y: auto;">
-        <h3>WYBIERZ KOLOR LUB WZÓR</h3>
-        
-        <div class="palette-group-title">DARMOWE:</div>
-        <div class="colors-grid-6" id="gridFree"></div>
+      <!-- BubbleX: sklep kolorów z podglądem przed zakupem -->
+      <div class="sub-modal bx-shop-modal" id="colorModal" aria-label="Sklep kolorów i wzorów">
+        <div>
+          <div class="bx-shop-title">KOLORY I WZORY</div>
+          <div class="bx-shop-subtitle">Kliknij dowolny kolor, aby zobaczyć go na poruszającej się kulce. Sam podgląd nic nie kosztuje.</div>
+        </div>
+        <div class="bx-skin-stage">
+          <canvas id="skinPreviewCanvas" width="760" height="252" aria-label="Animowany podgląd kulki z wybranym kolorem lub wzorem"></canvas>
+        </div>
+        <div class="bx-preview-title-row">
+          <span class="bx-skin-name" id="skinPreviewName">Wybierz kolor</span>
+          <span class="bx-skin-state" id="skinPreviewState">Podgląd</span>
+        </div>
+        <button type="button" class="bx-shop-main-action" id="skinPreviewAction" onclick="confirmSkinPreviewChoice()">Wybierz kolor</button>
+        <div class="bx-shop-scroll" id="colorShopScroll">
+          <div class="bx-shop-tier-heading"><span>DARMOWE</span><small>Bez opłat</small></div>
+          <div class="colors-grid-6" id="gridFree"></div>
 
-        <div class="palette-group-title">ZA 100 PUNKTÓW:</div>
-        <div class="colors-grid-6" id="grid100"></div>
+          <div class="bx-shop-tier-heading"><span>KOLORY PREMIUM</span><small>100 pkt / kolor</small></div>
+          <div class="colors-grid-6" id="grid100"></div>
 
-        <div class="palette-group-title">ZA 250 PUNKTÓW:</div>
-        <div class="colors-grid-4" id="grid250"></div>
+          <div class="bx-shop-tier-heading"><span>WZORY</span><small>250 pkt / wzór</small></div>
+          <div class="colors-grid-4" id="grid250"></div>
 
-        <div class="palette-group-title">ZA 500 PUNKTÓW:</div>
-        <div class="colors-grid-3" id="grid500"></div>
-
-        <button class="btn-small cyan" style="padding:10px; margin-top:8px;" onclick="closeModal('colorModal')">Zamknij</button>
+          <div class="bx-shop-tier-heading"><span>SPECJALNE</span><small>500 pkt / kolor</small></div>
+          <div class="colors-grid-3" id="grid500"></div>
+        </div>
+        <div class="bx-shop-footer">
+          <span class="bx-shop-wallet" id="colorShopWallet">Podgląd jest darmowy</span>
+          <button type="button" class="bx-shop-close" onclick="closeModal('colorModal')">Zamknij</button>
+        </div>
       </div>
 
       <!-- Modal Logowania -->
@@ -1000,11 +1149,19 @@
       return loadedSkins[url];
     }
 
-    function openModal(id) { 
-      document.getElementById(id).style.display = "flex"; 
-      if (id === 'colorModal') renderColorPalette();
+    function openModal(id) {
+      document.getElementById(id).style.display = "flex";
+      if (id === 'colorModal') {
+        // Podgląd jest niezależny od koloru faktycznie założonego przez gracza.
+        previewSkinItem = findSkinItem(chosenPlayerColor) || COLOR_TIERS.free[0];
+        renderColorPalette();
+        startSkinPreviewAnimation();
+      }
     }
-    function closeModal(id) { document.getElementById(id).style.display = "none"; }
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+      if (id === 'colorModal') stopSkinPreviewAnimation();
+    }
 
     function closeStatsAndShowMenu() {
       document.getElementById("statsOverlay").style.display = "none";
@@ -1110,47 +1267,166 @@
       renderRankingList(filtered);
     }
 
-    // Renderowanie siatki kolorów
+    // Sklep: podgląd przed zakupem. Kliknięcie kafelka NIGDY nie kupuje koloru.
+    let previewSkinItem = null;
+    let skinPreviewAnimationId = null;
+
+    function allSkinItems() {
+      return [...COLOR_TIERS.free, ...COLOR_TIERS.tier100, ...COLOR_TIERS.tier250, ...COLOR_TIERS.tier500];
+    }
+
+    function findSkinItem(id) {
+      return allSkinItems().find(item => item.id.toLowerCase() === String(id || '').toLowerCase());
+    }
+
+    function skinOwned(item) {
+      return item.cost === 0 || !!currentProfile?.unlocked_colors?.includes(item.id);
+    }
+
+    function chooseSkinForPreview(item) {
+      previewSkinItem = item;
+      renderColorPalette();
+      // Animacja stale pokazuje previewSkinItem, bez zmiany koloru gracza.
+    }
+
+    function updateSkinPreviewDetails() {
+      const item = previewSkinItem || findSkinItem(chosenPlayerColor) || COLOR_TIERS.free[0];
+      const owned = skinOwned(item);
+      const equipped = chosenPlayerColor.toLowerCase() === item.id.toLowerCase();
+      document.getElementById('skinPreviewName').textContent = item.name;
+      document.getElementById('skinPreviewState').textContent = equipped ? 'Założony' : owned ? 'Odblokowany' : `${item.cost} pkt`;
+      const action = document.getElementById('skinPreviewAction');
+      action.disabled = equipped;
+      action.textContent = equipped ? 'Ten kolor jest już założony' : owned ? 'Załóż ten kolor' : `Kup za ${item.cost} pkt`;
+      const wallet = document.getElementById('colorShopWallet');
+      wallet.textContent = currentProfile ? `Twoje punkty: ${currentProfile.points || 0} pkt` : 'Zaloguj się, aby kupować';
+    }
+
+    // Wywoływane DOPIERO po kliknięciu przycisku pod animowanym podglądem.
+    function confirmSkinPreviewChoice() {
+      const item = previewSkinItem;
+      if (!item) return;
+      if (skinOwned(item)) selectColor(item.id);
+      else buyColor(item); // Istniejące potwierdzenie transakcji i zapis w Supabase.
+    }
+
     function renderColorPalette() {
       const unlocked = currentProfile?.unlocked_colors || [];
+      if (!previewSkinItem) previewSkinItem = findSkinItem(chosenPlayerColor) || COLOR_TIERS.free[0];
 
       function populate(gridId, items) {
         const grid = document.getElementById(gridId);
-        grid.innerHTML = "";
-        items.forEach(item => {
-          const isFree = item.cost === 0;
-          const isUnlocked = isFree || unlocked.includes(item.id);
-          const tile = document.createElement("div");
-
-          tile.className = "color-tile" + 
-            (chosenPlayerColor.toLowerCase() === item.id.toLowerCase() ? " selected" : "") +
-            (!isUnlocked ? " locked" : "") +
-            (item.className ? " " + item.className : "");
+        grid.replaceChildren();
+        for (const item of items) {
+          const isUnlocked = item.cost === 0 || unlocked.includes(item.id);
+          const equipped = chosenPlayerColor.toLowerCase() === item.id.toLowerCase();
+          const isPreview = previewSkinItem.id === item.id;
+          const tile = document.createElement('button');
+          tile.type = 'button';
+          tile.className = 'color-tile' + (equipped ? ' selected' : '') +
+            (!isUnlocked ? ' locked' : '') + (isPreview ? ' previewing' : '') +
+            (item.className ? ' ' + item.className : '');
+          tile.setAttribute('aria-pressed', String(isPreview));
+          tile.setAttribute('aria-label', `Podgląd: ${item.name}${isUnlocked ? ' – odblokowany' : ` – ${item.cost} punktów`}`);
+          tile.title = `${item.name} — ${isUnlocked ? 'odblokowany' : `${item.cost} pkt`}. Kliknij, aby obejrzeć.`;
 
           if (item.hex) {
             tile.style.backgroundColor = item.hex;
-            if (item.hex === "#ffffff") tile.style.border = "1px solid #334166";
+            if (item.hex === '#ffffff') tile.style.borderColor = '#74869e';
           } else if (item.type) {
             const pCanvas = getPatternCanvas(item.id);
             tile.style.backgroundImage = `url(${pCanvas.toDataURL()})`;
-            tile.style.backgroundSize = "24px 24px";
+            tile.style.backgroundSize = `${pCanvas.width}px ${pCanvas.height}px`;
           }
-
-          tile.setAttribute("data-cost", `🔒 ${item.cost}p`);
-          tile.title = item.name + (!isUnlocked ? ` (Koszt: ${item.cost} pkt)` : "");
-
-          tile.onclick = () => {
-            if (isUnlocked) selectColor(item.id);
-            else buyColor(item);
-          };
+          tile.addEventListener('click', () => chooseSkinForPreview(item));
           grid.appendChild(tile);
-        });
+        }
       }
 
-      populate("gridFree", COLOR_TIERS.free);
-      populate("grid100", COLOR_TIERS.tier100);
-      populate("grid250", COLOR_TIERS.tier250);
-      populate("grid500", COLOR_TIERS.tier500);
+      populate('gridFree', COLOR_TIERS.free);
+      populate('grid100', COLOR_TIERS.tier100);
+      populate('grid250', COLOR_TIERS.tier250);
+      populate('grid500', COLOR_TIERS.tier500);
+      updateSkinPreviewDetails();
+    }
+
+    function drawSkinPreview(timestamp) {
+      skinPreviewAnimationId = null;
+      const modal = document.getElementById('colorModal');
+      if (!modal || modal.style.display === 'none') return;
+      const canvas = document.getElementById('skinPreviewCanvas');
+      if (!canvas) return;
+      const c = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      const seconds = timestamp / 1000;
+
+      // Świat gry: delikatnie przesuwająca się siatka i płynąca kulka.
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#080f1b';
+      c.fillRect(0, 0, w, h);
+      c.save();
+      c.strokeStyle = 'rgba(75, 102, 142, .18)';
+      c.lineWidth = 1;
+      const grid = 48, drift = (seconds * 16) % grid;
+      c.beginPath();
+      for (let gx = -grid + drift; gx < w + grid; gx += grid) {
+        c.moveTo(gx, 0); c.lineTo(gx, h);
+      }
+      for (let gy = 0; gy < h; gy += grid) {
+        c.moveTo(0, gy); c.lineTo(w, gy);
+      }
+      c.stroke();
+      c.restore();
+
+      const item = previewSkinItem || COLOR_TIERS.free[0];
+      const x = w / 2 + Math.sin(seconds * 1.35) * 118;
+      const y = h / 2 + Math.sin(seconds * 2.1) * 7;
+      const radius = 77;
+
+      c.save();
+      c.shadowColor = 'rgba(0, 0, 0, .45)';
+      c.shadowBlur = 18;
+      c.shadowOffsetY = 10;
+      c.beginPath();
+      c.arc(x, y, radius, 0, Math.PI * 2);
+      if (item.isRainbow) {
+        // Ta sama zmiana barwy w czasie, co w grze.
+        c.fillStyle = `hsl(${(Date.now() / 15) % 360}, 100%, 50%)`;
+      } else if (item.type) {
+        c.fillStyle = c.createPattern(getPatternCanvas(item.id), 'repeat') || item.color || '#ff2233';
+      } else {
+        c.fillStyle = item.hex || item.id;
+      }
+      c.fill();
+      c.restore();
+
+      c.save();
+      c.beginPath();
+      c.arc(x, y, radius, 0, Math.PI * 2);
+      c.strokeStyle = 'rgba(0, 0, 0, .18)';
+      c.lineWidth = 4;
+      c.stroke();
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = item.id === '#ffffff' ? '#11141f' : '#ffffff';
+      c.font = 'bold 25px Arial, sans-serif';
+      const rawName = currentProfile?.username || 'Gracz';
+      const name = rawName.length > 13 ? rawName.slice(0, 13) + '…' : rawName;
+      c.fillText(name, x, y - 13, radius * 1.8);
+      c.font = 'bold 19px Arial, sans-serif';
+      c.fillText('250', x, y + 20);
+      c.restore();
+
+      skinPreviewAnimationId = requestAnimationFrame(drawSkinPreview);
+    }
+
+    function startSkinPreviewAnimation() {
+      if (skinPreviewAnimationId === null) skinPreviewAnimationId = requestAnimationFrame(drawSkinPreview);
+    }
+
+    function stopSkinPreviewAnimation() {
+      if (skinPreviewAnimationId !== null) cancelAnimationFrame(skinPreviewAnimationId);
+      skinPreviewAnimationId = null;
     }
 
     async function selectColor(colorId) {
