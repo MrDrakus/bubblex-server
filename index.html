@@ -3132,134 +3132,156 @@
 <!-- BubbleX.pl: poprawka ułożenia avatara, nicku i punktów w panelu konta.
      Wklej ten CAŁY blok przed ostatnim </body> po poprzednim kodzie nowego menu.
      Nie usuwaj istniejących przycisków ani skryptów. -->
-<style id="bx-account-layout-fix-v1">
-  .bx-menu-2026 .bx-account-panel {
+
+<!-- BubbleX.pl – POPRAWKA V2: środek ekranu + avatar, nick i punkty.
+     ZASTĄP tym blokiem STARĄ "poprawkę avatara" (bx-account-layout-fix-v1).
+     Nie zmieniaj głównego kodu gry ani wcześniejszego bloku "NOWY WYGLĄD MENU". -->
+<style id="bx-menu-centrowanie-profil-v2">
+  /* Ważne: NIE ustawiamy display:flex!important na overlay, bo gra ukrywa go
+     przez element.style.display='none' po kliknięciu GRAJ. */
+  #menuOverlay.bx-menu-2026 {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 18px 12px !important;
+    align-items: center !important;      /* pion */
+    justify-content: center !important;  /* poziom */
+    overflow-y: auto !important;
+  }
+  #menuOverlay.bx-menu-2026 .bx-menu-card {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    align-self: center !important;
+    flex: 0 1 470px !important;
+    width: min(470px, 100%) !important;
+    margin: auto !important;
+  }
+  /* Na niskich ekranach menu można przewijać zamiast obcinać przyciski. */
+  @media (max-height: 670px) {
+    #menuOverlay.bx-menu-2026 { align-items: flex-start !important; }
+    #menuOverlay.bx-menu-2026 .bx-menu-card { align-self: flex-start !important; }
+  }
+  /* Jeden wiersz: avatar | ZALOGOWANO + nick | punkty. */
+  #menuOverlay.bx-menu-2026 .bx-account-panel {
     display: flex !important;
     flex-direction: column !important;
-    align-items: stretch !important;
     flex-wrap: nowrap !important;
+    align-items: stretch !important;
     gap: 10px !important;
-    padding: 13px !important;
-  }
-  .bx-menu-2026 .bx-profile-top {
-    display: grid !important;
-    grid-template-columns: 42px minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    column-gap: 12px !important;
     width: 100% !important;
-    min-width: 0 !important;
+    font-size: 0 !important; /* ukrywa ewentualne stare luźne napisy */
   }
-  .bx-menu-2026 .bx-profile-top .bx-account-avatar {
-    margin: 0 !important;
+  #menuOverlay.bx-menu-2026 .bx-profile-top {
+    display: grid !important;
+    width: 100% !important;
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+    column-gap: 12px !important;
+    align-items: center !important;
+    text-align: left !important;
+  }
+  #menuOverlay.bx-menu-2026 .bx-profile-top .bx-account-avatar {
+    display: flex !important;
     width: 42px !important;
     height: 42px !important;
     min-width: 42px !important;
-    flex: none !important;
+    margin: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
   }
-  .bx-menu-2026 .bx-profile-identity {
+  #menuOverlay.bx-menu-2026 .bx-profile-identity {
+    min-width: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    justify-content: center !important;
-    min-width: 0 !important;
+    gap: 3px !important;
     text-align: left !important;
-    gap: 2px !important;
   }
-  .bx-menu-2026 .bx-profile-caption {
+  #menuOverlay.bx-menu-2026 .bx-profile-caption {
     color: #91a1b7 !important;
-    font-size: 10px !important;
-    font-weight: 700 !important;
+    font: 700 10px/1.2 Arial,sans-serif !important;
     letter-spacing: .4px !important;
-    line-height: 1.3 !important;
   }
-  .bx-menu-2026 .bx-profile-name {
+  #menuOverlay.bx-menu-2026 .bx-profile-name {
     color: #00d2ff !important;
-    font-size: 14px !important;
-    font-weight: 800 !important;
-    line-height: 1.3 !important;
+    font: 800 14px/1.3 Arial,sans-serif !important;
     overflow-wrap: anywhere !important;
-    text-align: left !important;
   }
-  .bx-menu-2026 .bx-profile-points {
-    display: inline-block !important;
-    background: #332a10 !important;
+  #menuOverlay.bx-menu-2026 .bx-profile-points {
+    display: inline-block;
+    padding: 7px 9px !important;
     border: 1px solid #66541b !important;
     border-radius: 7px !important;
-    padding: 7px 9px !important;
+    background: #332a10 !important;
     color: #ffd538 !important;
-    font-size: 12px !important;
-    line-height: 1.2 !important;
-    font-weight: 800 !important;
+    font: 800 12px/1.2 Arial,sans-serif !important;
     white-space: nowrap !important;
-    text-align: center !important;
   }
-  .bx-menu-2026 .bx-account-original-hidden {
-    display: none !important;
-  }
-  .bx-menu-2026 .bx-account-panel .bx-account-actions {
+  #menuOverlay.bx-menu-2026 .bx-legacy-account-hidden { display: none !important; }
+  #menuOverlay.bx-menu-2026 .bx-account-actions {
+    display: grid !important;
     width: 100% !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
     margin: 0 !important;
-    flex: none !important;
+    font-size: 12px !important;
   }
-  @media (max-width: 480px) {
-    .bx-menu-2026 .bx-profile-top {
+  @media (max-width: 420px) {
+    #menuOverlay.bx-menu-2026 .bx-profile-top {
       grid-template-columns: 38px minmax(0, 1fr) auto !important;
-      column-gap: 9px !important;
+      column-gap: 8px !important;
     }
-    .bx-menu-2026 .bx-profile-top .bx-account-avatar {
+    #menuOverlay.bx-menu-2026 .bx-profile-top .bx-account-avatar {
       width: 38px !important;
       height: 38px !important;
       min-width: 38px !important;
     }
-    .bx-menu-2026 .bx-profile-points {
-      padding: 6px !important;
-      font-size: 11px !important;
-    }
+    #menuOverlay.bx-menu-2026 .bx-profile-points { font-size: 11px !important; padding: 6px !important; }
   }
 </style>
-<script id="bx-account-layout-fix-script-v1">
+<script id="bx-menu-centrowanie-profil-v2-script">
 (function () {
   'use strict';
 
-  function normalize(value) {
-    return (value || '').replace(/\s+/g, ' ').trim();
-  }
-
-  function repairAccountLayout() {
-    const panel = document.querySelector('.bx-menu-2026 .bx-account-panel');
+  function fixProfile() {
+    const overlay = document.getElementById('menuOverlay');
+    if (!overlay) return;
+    const panel = overlay.querySelector('.bx-account-panel');
     if (!panel) return;
+    const actions = panel.querySelector('.bx-account-actions');
+    if (!actions) return;
 
-    const actionArea = panel.querySelector('.bx-account-actions');
-    // Nie ruszaj istniejących przycisków i ich nasłuchiwania kliknięć.
-    if (!actionArea) return;
+    // W poprzedniej wersji przyciski i nazwa mogły być w tym samym kontenerze.
+    // Przeniesienie wiersza PRZYCISKÓW zachowuje onclick/listenery i odsłania dane konta.
+    if (actions.parentElement !== panel) panel.appendChild(actions);
 
-    let header = panel.querySelector(':scope > .bx-profile-top');
-    let originalParts;
-    if (header) {
-      originalParts = Array.from(panel.children).filter(el =>
-        el !== header && el !== actionArea &&
-        !el.contains(actionArea)
-      );
-    } else {
-      originalParts = Array.from(panel.children).filter(el =>
-        el !== actionArea && !el.contains(actionArea) &&
-        !el.classList.contains('bx-account-avatar')
-      );
-    }
-
-    const oldInfo = normalize(originalParts.map(el => el.textContent).join(' '));
-    if (!/zalogowano\s*:?/i.test(oldInfo)) return;
-
-    const nickMatch = oldInfo.match(/zalogowano\s*:?\s*(.+?)(?=\s+\d[\d\s.,]*\s*pkt\b|\s+ranking\b|$)/i);
-    const pointsMatch = oldInfo.match(/(\d[\d\s.,]*)\s*pkt\b/i);
-    const nickname = nickMatch ? normalize(nickMatch[1]) : '';
-    if (!nickname) return; // Gdy nie da się rozpoznać profilu, zostaw oryginał.
+    let header = Array.from(panel.children).find(el => el.classList.contains('bx-profile-top'));
+    const avatar = panel.querySelector('.bx-account-avatar');
+    const legacy = Array.from(panel.childNodes).filter(node =>
+      node !== actions && node !== header && node !== avatar
+    );
+    const raw = legacy.map(node => node.textContent || '').join(' ').replace(/\s+/g, ' ').trim();
+    const pointsMatch = raw.match(/(\d[\d\s.,]*)\s*pkt\b/i);
+    const nameMatch = raw.match(/zalogowano\s*:?\s*(.*?)(?=\s*\d[\d\s.,]*\s*pkt\b|$)/i);
+    let nick = nameMatch ? nameMatch[1].replace(/\s+/g, ' ').trim() : '';
+    if (!nick && nameMatch) nick = raw.match(/zalogowano\s*:?\s*(\S+)/i)?.[1] || '';
+    if (!header && !nick) return;
 
     if (!header) {
-      const avatar = panel.querySelector('.bx-account-avatar');
-      if (!avatar) return;
       header = document.createElement('div');
       header.className = 'bx-profile-top';
+      const icon = avatar || document.createElement('span');
+      icon.className = 'bx-account-avatar';
+      if (!avatar) {
+        icon.textContent = '👤';
+        icon.setAttribute('aria-hidden', 'true');
+      }
       const identity = document.createElement('div');
       identity.className = 'bx-profile-identity';
       const caption = document.createElement('span');
@@ -3270,35 +3292,36 @@
       identity.append(caption, name);
       const points = document.createElement('span');
       points.className = 'bx-profile-points';
-      header.append(avatar, identity, points); // Przenosi istniejący avatar.
+      header.append(icon, identity, points);
       panel.insertBefore(header, panel.firstChild);
     }
 
-    originalParts.forEach(el => el.classList.add('bx-account-original-hidden'));
-
     const nameNode = header.querySelector('.bx-profile-name');
-    if (nameNode && nameNode.textContent !== nickname) nameNode.textContent = nickname;
+    if (nick && nameNode && nameNode.textContent !== nick) nameNode.textContent = nick;
     const pointsNode = header.querySelector('.bx-profile-points');
-    const pointsText = pointsMatch ? normalize(pointsMatch[1]) + ' pkt' : '';
-    if (pointsNode && pointsNode.textContent !== pointsText) pointsNode.textContent = pointsText;
-    if (pointsNode) pointsNode.style.display = pointsText ? '' : 'none';
+    if (pointsNode && pointsMatch) {
+      const text = pointsMatch[1].trim() + ' pkt';
+      if (pointsNode.textContent !== text) pointsNode.textContent = text;
+    }
+
+    // Ukryj tylko oryginalne etykiety konta, nie przyciski ani dane wejściowe gry.
+    legacy.forEach(node => {
+      if (node.nodeType === 1 && !node.classList.contains('bx-legacy-account-hidden'))
+        node.classList.add('bx-legacy-account-hidden');
+    });
   }
 
   function start() {
-    repairAccountLayout();
-    const overlay = document.getElementById('menuOverlay') || document.querySelector('.bx-menu-2026');
+    fixProfile();
+    const overlay = document.getElementById('menuOverlay');
     if (!overlay) return;
     let queued = false;
     new MutationObserver(() => {
       if (queued) return;
       queued = true;
-      queueMicrotask(() => {
-        queued = false;
-        repairAccountLayout();
-      });
+      queueMicrotask(() => { queued = false; fixProfile(); });
     }).observe(overlay, { childList: true, subtree: true, characterData: true });
   }
-
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start, { once: true });
   } else {
