@@ -3129,6 +3129,183 @@
   }, { once: true });
 })();
 </script>
+<!-- BubbleX.pl: poprawka ułożenia avatara, nicku i punktów w panelu konta.
+     Wklej ten CAŁY blok przed ostatnim </body> po poprzednim kodzie nowego menu.
+     Nie usuwaj istniejących przycisków ani skryptów. -->
+<style id="bx-account-layout-fix-v1">
+  .bx-menu-2026 .bx-account-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    padding: 13px !important;
+  }
+  .bx-menu-2026 .bx-profile-top {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    column-gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .bx-menu-2026 .bx-profile-top .bx-account-avatar {
+    margin: 0 !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    flex: none !important;
+  }
+  .bx-menu-2026 .bx-profile-identity {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    text-align: left !important;
+    gap: 2px !important;
+  }
+  .bx-menu-2026 .bx-profile-caption {
+    color: #91a1b7 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: .4px !important;
+    line-height: 1.3 !important;
+  }
+  .bx-menu-2026 .bx-profile-name {
+    color: #00d2ff !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+    overflow-wrap: anywhere !important;
+    text-align: left !important;
+  }
+  .bx-menu-2026 .bx-profile-points {
+    display: inline-block !important;
+    background: #332a10 !important;
+    border: 1px solid #66541b !important;
+    border-radius: 7px !important;
+    padding: 7px 9px !important;
+    color: #ffd538 !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+  .bx-menu-2026 .bx-account-original-hidden {
+    display: none !important;
+  }
+  .bx-menu-2026 .bx-account-panel .bx-account-actions {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: none !important;
+  }
+  @media (max-width: 480px) {
+    .bx-menu-2026 .bx-profile-top {
+      grid-template-columns: 38px minmax(0, 1fr) auto !important;
+      column-gap: 9px !important;
+    }
+    .bx-menu-2026 .bx-profile-top .bx-account-avatar {
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+    }
+    .bx-menu-2026 .bx-profile-points {
+      padding: 6px !important;
+      font-size: 11px !important;
+    }
+  }
+</style>
+<script id="bx-account-layout-fix-script-v1">
+(function () {
+  'use strict';
+
+  function normalize(value) {
+    return (value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function repairAccountLayout() {
+    const panel = document.querySelector('.bx-menu-2026 .bx-account-panel');
+    if (!panel) return;
+
+    const actionArea = panel.querySelector('.bx-account-actions');
+    // Nie ruszaj istniejących przycisków i ich nasłuchiwania kliknięć.
+    if (!actionArea) return;
+
+    let header = panel.querySelector(':scope > .bx-profile-top');
+    let originalParts;
+    if (header) {
+      originalParts = Array.from(panel.children).filter(el =>
+        el !== header && el !== actionArea &&
+        !el.contains(actionArea)
+      );
+    } else {
+      originalParts = Array.from(panel.children).filter(el =>
+        el !== actionArea && !el.contains(actionArea) &&
+        !el.classList.contains('bx-account-avatar')
+      );
+    }
+
+    const oldInfo = normalize(originalParts.map(el => el.textContent).join(' '));
+    if (!/zalogowano\s*:?/i.test(oldInfo)) return;
+
+    const nickMatch = oldInfo.match(/zalogowano\s*:?\s*(.+?)(?=\s+\d[\d\s.,]*\s*pkt\b|\s+ranking\b|$)/i);
+    const pointsMatch = oldInfo.match(/(\d[\d\s.,]*)\s*pkt\b/i);
+    const nickname = nickMatch ? normalize(nickMatch[1]) : '';
+    if (!nickname) return; // Gdy nie da się rozpoznać profilu, zostaw oryginał.
+
+    if (!header) {
+      const avatar = panel.querySelector('.bx-account-avatar');
+      if (!avatar) return;
+      header = document.createElement('div');
+      header.className = 'bx-profile-top';
+      const identity = document.createElement('div');
+      identity.className = 'bx-profile-identity';
+      const caption = document.createElement('span');
+      caption.className = 'bx-profile-caption';
+      caption.textContent = 'ZALOGOWANO';
+      const name = document.createElement('strong');
+      name.className = 'bx-profile-name';
+      identity.append(caption, name);
+      const points = document.createElement('span');
+      points.className = 'bx-profile-points';
+      header.append(avatar, identity, points); // Przenosi istniejący avatar.
+      panel.insertBefore(header, panel.firstChild);
+    }
+
+    originalParts.forEach(el => el.classList.add('bx-account-original-hidden'));
+
+    const nameNode = header.querySelector('.bx-profile-name');
+    if (nameNode && nameNode.textContent !== nickname) nameNode.textContent = nickname;
+    const pointsNode = header.querySelector('.bx-profile-points');
+    const pointsText = pointsMatch ? normalize(pointsMatch[1]) + ' pkt' : '';
+    if (pointsNode && pointsNode.textContent !== pointsText) pointsNode.textContent = pointsText;
+    if (pointsNode) pointsNode.style.display = pointsText ? '' : 'none';
+  }
+
+  function start() {
+    repairAccountLayout();
+    const overlay = document.getElementById('menuOverlay') || document.querySelector('.bx-menu-2026');
+    if (!overlay) return;
+    let queued = false;
+    new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      queueMicrotask(() => {
+        queued = false;
+        repairAccountLayout();
+      });
+    }).observe(overlay, { childList: true, subtree: true, characterData: true });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
+</script>
 
 </body>
 </html>
