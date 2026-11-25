@@ -361,6 +361,50 @@
       color: #00d2ff;
       font-weight: 800;
     }
+
+    /* BubbleX: reset hasła — zgodny wizualnie z pozostałymi oknami konta. */
+    #loginModal .bx-forgot-link {
+      align-self: flex-end;
+      border: 0;
+      color: #43d7ff;
+      background: transparent;
+      cursor: pointer;
+      font: 600 12px Arial, sans-serif;
+      padding: 4px 1px 6px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    #loginModal .bx-forgot-link:hover { color: #a1edff; }
+    #loginModal .bx-forgot-link:focus-visible { outline: 2px solid #43d7ff; outline-offset: 3px; }
+    .bx-auth-description {
+      color: #9fb1c7;
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.55;
+      margin: 4px 0 7px;
+    }
+    .bx-auth-notice {
+      color: #b5c6da;
+      background: #0d1725;
+      border: 1px solid #30415a;
+      border-radius: 8px;
+      padding: 10px 11px;
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+    .bx-auth-notice.bx-error {
+      color: #ffb3bf;
+      border-color: #663447;
+    }
+    .bx-auth-notice.bx-success {
+      color: #b6f5df;
+      border-color: #2b6955;
+    }
+    #forgotPasswordModal .btn-small:disabled,
+    #newPasswordModal .btn-small:disabled { opacity: .6; cursor: wait; }
+
     .sub-input {
       width: 100%;
       padding: 10px 12px;
@@ -981,13 +1025,36 @@
         </div>
       </div>
 
-      <!-- Modal Logowania -->
+      <!-- Logowanie i odzyskiwanie dostępu do konta -->
       <div class="sub-modal" id="loginModal">
         <h3>LOGOWANIE DO KONTA</h3>
-        <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick...">
-        <input type="password" id="loginPassword" class="sub-input" placeholder="Twoje hasło...">
-        <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleLogin()">Zaloguj się</button>
-        <button class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
+        <input type="text" id="loginUsername" class="sub-input" maxlength="15" placeholder="Twój nick..." autocomplete="username">
+        <input type="password" id="loginPassword" class="sub-input" placeholder="Twoje hasło..." autocomplete="current-password">
+        <button type="button" class="bx-forgot-link" onclick="openForgotPasswordModal()">Zapomniałem hasła</button>
+        <div id="loginResetNotice" class="bx-auth-notice" role="status" style="display:none"></div>
+        <button type="button" class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleLogin()">Zaloguj się</button>
+        <button type="button" class="btn-small" onclick="closeModal('loginModal')">Wróć</button>
+      </div>
+
+      <!-- Krok 1: wiadomość z bezpiecznym linkiem na e-mail użytkownika -->
+      <div class="sub-modal" id="forgotPasswordModal" aria-label="Odzyskiwanie hasła">
+        <h3>ODZYSKIWANIE HASŁA</h3>
+        <p class="bx-auth-description">Podaj adres e-mail użyty przy rejestracji konta BubbleX.pl. Wyślemy link, dzięki któremu ustawisz nowe hasło.</p>
+        <input type="email" id="passwordResetEmail" class="sub-input" placeholder="Adres e-mail konta" autocomplete="email" maxlength="254">
+        <div id="passwordResetEmailStatus" class="bx-auth-notice" role="status" aria-live="polite" style="display:none"></div>
+        <button type="button" id="sendPasswordResetBtn" class="btn-small cyan" style="padding:10px;" onclick="sendPasswordResetEmail()">Wyślij link do zmiany hasła</button>
+        <button type="button" class="btn-small" onclick="closeModal('forgotPasswordModal'); openModal('loginModal');">Wróć do logowania</button>
+      </div>
+
+      <!-- Krok 2: ten ekran otwiera się automatycznie po kliknięciu linku w e-mailu -->
+      <div class="sub-modal" id="newPasswordModal" aria-label="Ustawienie nowego hasła">
+        <h3>USTAW NOWE HASŁO</h3>
+        <p class="bx-auth-description">Link został potwierdzony. Wprowadź nowe hasło do konta BubbleX.pl.</p>
+        <input type="password" id="recoveryNewPassword" class="sub-input" placeholder="Nowe hasło (minimum 8 znaków)" autocomplete="new-password" minlength="8">
+        <input type="password" id="recoveryConfirmPassword" class="sub-input" placeholder="Powtórz nowe hasło" autocomplete="new-password" minlength="8">
+        <div id="newPasswordStatus" class="bx-auth-notice" role="status" aria-live="polite" style="display:none"></div>
+        <button type="button" id="saveNewPasswordBtn" class="btn-small cyan" style="padding:10px;" onclick="saveRecoveredPassword()">Zapisz nowe hasło</button>
+        <button type="button" class="btn-small" onclick="closeModal('newPasswordModal')">Wróć do menu</button>
       </div>
 
       <!-- Modal Rejestracji -->
@@ -1074,8 +1141,14 @@
   <script>
     const SUPABASE_URL = "https://dmwhuuoedtsqelkbypii.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_hI3Djw5k0CjO_Qj_O7MZ7Q_B406QGK_";
+    // Po wejściu z maila Supabase odczyta jednorazowy token z URL.
+    // Sprawdzamy typ linku PRZED inicjalizacją klienta auth (token może zniknąć z adresu).
+    const bxAuthHash = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const bxRecoveryUrlOnLoad = bxAuthHash.get('type') === 'recovery';
+    const bxRecoveryLinkErrorOnLoad = bxAuthHash.has('error') || bxAuthHash.has('error_code');
     const sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
+    let recoverySessionActive = false;
     let currentUser = null;
     let currentProfile = null;
     let currentClan = null;
@@ -1207,6 +1280,127 @@
     function closeModal(id) {
       document.getElementById(id).style.display = "none";
       if (id === 'colorModal') stopSkinPreviewAnimation();
+    }
+
+    // ===== BubbleX: odzyskiwanie hasła przez Supabase Auth =====
+    const BX_PASSWORD_REDIRECT = 'https://mrdrakus.github.io/bubblex-server/';
+
+    function showAuthNotice(id, message, kind = '') {
+      const node = document.getElementById(id);
+      if (!node) return;
+      node.textContent = message;
+      node.classList.remove('bx-error', 'bx-success');
+      if (kind) node.classList.add('bx-' + kind);
+      node.style.display = message ? 'block' : 'none';
+    }
+
+    function openForgotPasswordModal(message = '', kind = '') {
+      closeModal('loginModal');
+      closeModal('newPasswordModal');
+      const userInput = document.getElementById('loginUsername');
+      const emailInput = document.getElementById('passwordResetEmail');
+      if (userInput && /@/.test(userInput.value) && !emailInput.value) emailInput.value = userInput.value.trim();
+      showAuthNotice('passwordResetEmailStatus', message, kind);
+      document.getElementById('menuOverlay').style.display = 'flex';
+      openModal('forgotPasswordModal');
+      emailInput.focus();
+    }
+
+    async function sendPasswordResetEmail() {
+      const input = document.getElementById('passwordResetEmail');
+      const email = input.value.trim();
+      const button = document.getElementById('sendPasswordResetBtn');
+      if (!sb) return showAuthNotice('passwordResetEmailStatus', 'Usługa kont jest chwilowo niedostępna.', 'error');
+      if (!input.checkValidity() || !email) {
+        return showAuthNotice('passwordResetEmailStatus', 'Podaj prawidłowy adres e-mail.', 'error');
+      }
+      button.disabled = true;
+      button.textContent = 'Wysyłanie...';
+      showAuthNotice('passwordResetEmailStatus', 'Wysyłam prośbę o zmianę hasła...');
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: BX_PASSWORD_REDIRECT
+        });
+        if (error) throw error;
+        // Nie ujawniamy, czy wskazany e-mail jest zarejestrowany.
+        showAuthNotice('passwordResetEmailStatus',
+          'Jeżeli istnieje konto przypisane do tego adresu, otrzymasz e-mail z linkiem. Sprawdź również folder Spam.', 'success');
+      } catch (error) {
+        console.error('BubbleX: wysłanie resetu hasła nie powiodło się:', error);
+        const isLimited = /rate|limit|too many|429/i.test(error.message || '');
+        showAuthNotice('passwordResetEmailStatus', isLimited
+          ? 'Zbyt wiele prób wysłania e-maila. Spróbuj ponownie później.'
+          : 'Nie udało się wysłać wiadomości. Sprawdź adres lub konfigurację poczty Supabase.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Wyślij link do zmiany hasła';
+      }
+    }
+
+    function showNewPasswordModal() {
+      recoverySessionActive = true;
+      document.getElementById('menuOverlay').style.display = 'flex';
+      closeModal('loginModal');
+      closeModal('forgotPasswordModal');
+      openModal('newPasswordModal');
+      showAuthNotice('newPasswordStatus', '');
+      document.getElementById('recoveryNewPassword').focus();
+      // Po rozpoznaniu linku nie pokazuj w pasku adresu tokenu dostępowego.
+      if (/access_token=|refresh_token=/i.test(location.hash)) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    }
+
+    async function saveRecoveredPassword() {
+      const newPassword = document.getElementById('recoveryNewPassword').value;
+      const confirmPassword = document.getElementById('recoveryConfirmPassword').value;
+      const button = document.getElementById('saveNewPasswordBtn');
+      if (newPassword.length < 8) return showAuthNotice('newPasswordStatus', 'Hasło musi mieć co najmniej 8 znaków.', 'error');
+      if (newPassword !== confirmPassword) return showAuthNotice('newPasswordStatus', 'Wpisane hasła nie są identyczne.', 'error');
+      if (!sb || !recoverySessionActive) return showAuthNotice('newPasswordStatus', 'Otwórz aktualny link do zmiany hasła z e-maila.', 'error');
+      button.disabled = true;
+      button.textContent = 'Zapisuję...';
+      try {
+        const { data: { session }, error: sessionError } = await sb.auth.getSession();
+        if (sessionError || !session) throw new Error('Sesja resetowania hasła wygasła. Poproś o nowy link.');
+        const { error } = await sb.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        document.getElementById('recoveryNewPassword').value = '';
+        document.getElementById('recoveryConfirmPassword').value = '';
+        recoverySessionActive = false;
+        // Po zmianie hasła wymagamy nowego logowania.
+        await sb.auth.signOut();
+        closeModal('newPasswordModal');
+        openModal('loginModal');
+        document.getElementById('loginPassword').value = '';
+        showAuthNotice('loginResetNotice', 'Hasło zostało zmienione. Zaloguj się przy użyciu nowego hasła.', 'success');
+      } catch (error) {
+        showAuthNotice('newPasswordStatus', error.message || 'Nie udało się zmienić hasła.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Zapisz nowe hasło';
+      }
+    }
+
+    // Słuchacz dodany od razu, a nie po getSession(): PASSWORD_RECOVERY
+    // mógłby inaczej zostać pominięty po otwarciu odnośnika z poczty.
+    if (sb) {
+      sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          showNewPasswordModal();
+          return;
+        }
+        if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          currentProfile = null;
+          currentClan = null;
+          setTimeout(updateUserUI, 0);
+        } else if (session && !recoverySessionActive) {
+          currentUser = session.user;
+          // Nie wywołuj asynchronicznych metod Supabase w samym callbacku auth.
+          setTimeout(() => loadUserData().catch(console.error), 0);
+        }
+      });
     }
 
     function closeStatsAndShowMenu() {
@@ -2087,26 +2281,28 @@
     window.addEventListener("DOMContentLoaded", async () => {
       updateColorPreviewUI();
       updateUserUI();
-
       if (!sb) return;
-
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        await loadUserData();
-      }
-
-      sb.auth.onAuthStateChange(async (event, session) => {
-        if (session) {
+      try {
+        const { data: { session }, error } = await sb.auth.getSession();
+        if (error) throw error;
+        if (bxRecoveryLinkErrorOnLoad) {
+          openForgotPasswordModal('Link do zmiany hasła jest nieprawidłowy lub wygasł. Wyślij nową prośbę.', 'error');
+          if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+        } else if (bxRecoveryUrlOnLoad && session) {
+          // Zabezpieczenie na wypadek, gdy zdarzenie PASSWORD_RECOVERY przyszło przed ładowaniem DOM.
+          showNewPasswordModal();
+        } else if (bxRecoveryUrlOnLoad && !session && !recoverySessionActive) {
+          openForgotPasswordModal('Nie udało się potwierdzić linku. Poproś o nową wiadomość.', 'error');
+        } else if (session && !recoverySessionActive) {
           currentUser = session.user;
           await loadUserData();
-        } else if (event === "SIGNED_OUT") {
-          currentUser = null;
-          currentProfile = null;
-          currentClan = null;
-          updateUserUI();
         }
-      });
+      } catch (error) {
+        console.error('BubbleX: błąd odczytu sesji:', error);
+        if (bxRecoveryUrlOnLoad || bxRecoveryLinkErrorOnLoad) {
+          openForgotPasswordModal('Link do zmiany hasła nie zadziałał. Poproś o nowy.', 'error');
+        }
+      }
     });
 
     const cvs = document.getElementById("cvs");
