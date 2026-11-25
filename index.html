@@ -1063,8 +1063,9 @@
         <input type="text" id="regUsername" class="sub-input" maxlength="15" placeholder="Wybierz unikalny nick...">
         <input type="email" id="regEmail" class="sub-input" placeholder="Twój unikalny e-mail...">
         <input type="password" id="regPassword" class="sub-input" placeholder="Hasło (min. 6 znaków)...">
-        <button class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleRegister()">Zarejestruj konto</button>
-        <button class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
+        <button type="button" id="registerSubmitButton" class="btn-small cyan" style="padding:10px; margin-top:4px;" onclick="handleRegister()">Zarejestruj konto</button>
+        <div id="registerStatus" class="bx-auth-notice" role="status" aria-live="polite" style="display:none"></div>
+        <button type="button" class="btn-small" onclick="closeModal('registerModal')">Wróć</button>
       </div>
 
       <!-- Modal Klanu -->
@@ -2011,36 +2012,77 @@
       alert("Zalogowano pomyślnie jako: " + currentProfile.username);
     }
 
+    // BubbleX: rejestracja z czytelną diagnostyką problemów Supabase.
+    // Sam formularz nie tworzy rekordu w profiles; potrzebny jest trigger w bazie.
+    let registrationInProgress = false;
     async function handleRegister() {
+      if (registrationInProgress) return;
       const username = document.getElementById("regUsername").value.trim();
       const email = document.getElementById("regEmail").value.trim().toLowerCase();
-      const password = document.getElementById("regPassword").value.trim();
+      const password = document.getElementById("regPassword").value;
+      const button = document.getElementById("registerSubmitButton");
+      const notice = (message, type = 'error') => showAuthNotice('registerStatus', message, type);
 
-      if (!username || !email || !password) return alert("Wszystkie pola są wymagane!");
-      if (username.length < 3) return alert("Nick musi mieć minimum 3 znaki!");
-      if (password.length < 6) return alert("Hasło musi mieć co najmniej 6 znaków!");
+      notice('');
+      if (!username || !email || !password) return notice('Wypełnij nick, e-mail i hasło.');
+      if (username.length < 3 || username.length > 15) return notice('Nick musi mieć od 3 do 15 znaków.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return notice('Podaj poprawny adres e-mail.');
+      if (password.length < 6) return notice('Hasło musi mieć co najmniej 6 znaków.');
+      if (!sb || !sb.auth) return notice('Nie załadowała się biblioteka Supabase. Sprawdź połączenie z internetem i blokadę skryptów.');
 
-      const { data: existingUser } = await sb
-        .from('profiles')
-        .select('username')
-        .ilike('username', username)
-        .maybeSingle();
+      registrationInProgress = true;
+      button.disabled = true;
+      button.textContent = 'Rejestrowanie...';
+      notice('Sprawdzam nick i tworzę konto...', 'success');
 
-      if (existingUser) return alert("Nick \"" + username + "\" jest już zajęty! Wybierz inny.");
+      try {
+        const { data: existingUser, error: lookupError } = await sb
+          .from('profiles')
+          .select('id')
+          .ilike('username', username)
+          .maybeSingle();
 
-      const { error } = await sb.auth.signUp({
-        email,
-        password,
-        options: { data: { username } }
-      });
+        if (lookupError) {
+          throw new Error(`Nie udało się sprawdzić dostępności nicku w tabeli profiles: ${lookupError.message}`);
+        }
+        if (existingUser) {
+          return notice(`Nick „${username}” jest już zajęty. Wybierz inny.`);
+        }
 
-      if (error) return alert("Błąd rejestracji: " + error.message);
+        const { data, error } = await sb.auth.signUp({
+          email,
+          password,
+          options: { data: { username } }
+        });
+        if (error) {
+          const detail = error.message || 'Nieznany błąd';
+          const code = error.code ? ` (${error.code})` : '';
+          throw new Error(`Supabase odrzucił rejestrację: ${detail}${code}`);
+        }
 
-      alert("Konto utworzone! Możesz się teraz zalogować.");
-      closeModal('registerModal');
-      document.getElementById("loginUsername").value = username;
-      document.getElementById("regPassword").value = "";
-      openModal('loginModal');
+        document.getElementById('loginUsername').value = username;
+        document.getElementById('regPassword').value = '';
+        if (!data || !data.user) {
+          return notice('Nie otrzymano potwierdzenia rejestracji. Sprawdź ustawienia Auth w Supabase.');
+        }
+        if (!data.session) {
+          // To normalne, gdy w Auth włączone jest potwierdzanie e-maila.
+          return notice('Rejestracja została przyjęta. Sprawdź pocztę (także Spam) i potwierdź e-mail przed zalogowaniem.', 'success');
+        }
+
+        notice('Konto utworzone. Możesz się zalogować.', 'success');
+        closeModal('registerModal');
+        openModal('loginModal');
+        showAuthNotice('loginResetNotice', 'Konto zostało utworzone. Jeśli po logowaniu nick nie istnieje, sprawdź trigger tworzący profil w Supabase.', 'success');
+      } catch (err) {
+        console.error('BubbleX: błąd rejestracji', err);
+        const raw = err && err.message ? err.message : 'Nieznany błąd rejestracji';
+        notice(raw);
+      } finally {
+        registrationInProgress = false;
+        button.disabled = false;
+        button.textContent = 'Zarejestruj konto';
+      }
     }
 
     async function logoutUser() {
