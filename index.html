@@ -793,6 +793,39 @@
       #colorModal .bx-shop-main-action { height: 32px; }
     }
 
+    /* Własny skin — spokojny wygląd spójny ze sklepem. */
+    #colorModal .bx-own-skin-panel {
+      border: 1px solid #2b3d55; background: #0b1422;
+      border-radius: 11px; padding: 11px; margin: 2px 0 11px;
+    }
+    #colorModal .bx-own-skin-upload {
+      width: 100%; min-height: 42px; display: flex; justify-content: center; align-items: center;
+      gap: 9px; border: 1px dashed #47728d; border-radius: 8px;
+      background: rgba(21, 153, 199, .075); color: #b5eaff; cursor: pointer;
+      font-size: 12px; font-weight: 750; transition: border-color .18s, background .18s;
+    }
+    #colorModal .bx-own-skin-upload:hover:not(:disabled) {
+      background: rgba(21, 153, 199, .15); border-color: #20c4f3;
+    }
+    #colorModal .bx-own-skin-upload:disabled { opacity: .55; cursor: progress; }
+    #colorModal .bx-own-skin-upload-icon { font-size: 21px; font-weight: 400; line-height: 1; }
+    #colorModal .bx-own-skin-tip { font-size: 10px; line-height: 1.5; color: #93a8be; margin-top: 9px; }
+    #colorModal .bx-own-skin-tip.bx-own-error { color: #ff9b9b; }
+    #colorModal .bx-own-skin-owned-title {
+      margin: 12px 0 7px; font-size: 10px; font-weight: 800; color: #aebfd3;
+      letter-spacing: .3px;
+    }
+    #colorModal .bx-own-skin-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
+    #colorModal .bx-own-skin-tile {
+      display: block; aspect-ratio: 1; width: 100%; border: 2px solid #324258;
+      border-radius: 9px; background-size: cover; background-position: center;
+      background-color: #1d293a; cursor: pointer; transition: transform .18s, border-color .18s;
+    }
+    #colorModal .bx-own-skin-tile:hover { transform: translateY(-2px); border-color: #74cfe7; }
+    #colorModal .bx-own-skin-tile.previewing { border-color: #26d1ff; box-shadow: 0 0 0 2px rgba(38,209,255,.22); }
+    #colorModal .bx-own-skin-tile.selected { outline: 1px solid #84eab1; }
+    #colorModal .bx-shop-main-action:disabled { opacity: .75; }
+
     canvas { display: block; }
   </style>
 </head>
@@ -902,10 +935,10 @@
       </div>
 
       <!-- BubbleX: sklep kolorów z podglądem przed zakupem -->
-      <div class="sub-modal bx-shop-modal" id="colorModal" aria-label="Sklep kolorów i wzorów">
+      <div class="sub-modal bx-shop-modal" id="colorModal" aria-label="Sklep kolorów, wzorów i własnych skinów">
         <div>
           <div class="bx-shop-title">KOLORY I WZORY</div>
-                  </div>
+        </div>
         <div class="bx-skin-stage">
           <canvas id="skinPreviewCanvas" width="760" height="252" aria-label="Animowany podgląd kulki z wybranym kolorem lub wzorem"></canvas>
         </div>
@@ -926,6 +959,21 @@
 
           <div class="bx-shop-tier-heading"><span>SPECJALNE</span><small>500 pkt / kolor</small></div>
           <div class="colors-grid-3" id="grid500"></div>
+
+          <!-- Własny skin: dopiero przycisk pod podglądem może kupić obraz. -->
+          <div class="bx-shop-tier-heading"><span>WŁASNY SKIN</span><small>1000 pkt / nowy plik</small></div>
+          <div class="bx-own-skin-panel">
+            <button type="button" class="bx-own-skin-upload" id="ownSkinPickBtn" onclick="document.getElementById('ownSkinFile').click()">
+              <span class="bx-own-skin-upload-icon" aria-hidden="true">＋</span>
+              <span>Dodaj własny obraz</span>
+            </button>
+            <input id="ownSkinFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleOwnSkinFile(event)" aria-label="Wybierz obraz dla własnego skina">
+            <div class="bx-own-skin-tip" id="ownSkinTip">PNG, JPG lub WEBP · do 5 MB · obraz zostanie przycięty do kwadratu. Wybór pliku nic nie kosztuje.</div>
+            <div class="bx-own-skin-owned" id="ownedSkinPanel" style="display:none">
+              <div class="bx-own-skin-owned-title">TWOJE KUPIONE SKINY</div>
+              <div class="bx-own-skin-grid" id="ownedSkinGrid"></div>
+            </div>
+          </div>
         </div>
         <div class="bx-shop-footer">
           <span class="bx-shop-wallet" id="colorShopWallet">Podgląd jest darmowy</span>
@@ -1269,16 +1317,205 @@
     let previewSkinItem = null;
     let skinPreviewAnimationId = null;
 
+    const OWN_SKIN_COST = 1000;
+    let ownSkinDraft = null; // Tylko lokalny podgląd aż do zatwierdzenia zakupu.
+    let ownSkinPurchaseBusy = false;
+
+    function ownSkinUrl(colorId) {
+      if (typeof colorId !== 'string' || !colorId.startsWith('custom:')) return null;
+      try {
+        const url = new URL(colorId.slice(7));
+        // Nie wczytuj obcych adresów ze zmodyfikowanego localStorage/bazy.
+        if (url.origin !== new URL(SUPABASE_URL).origin ||
+            !url.pathname.startsWith('/storage/v1/object/public/skins/')) return null;
+        return url.href;
+      } catch (_) { return null; }
+    }
+
+    function ownSkinItem(colorId, index = 1) {
+      const url = ownSkinUrl(colorId);
+      return url ? { id: colorId, type: 'custom', customUrl: url,
+        name: `Własny skin ${index}`, cost: OWN_SKIN_COST } : null;
+    }
+
+    function purchasedOwnSkinItems() {
+      const ids = Array.isArray(currentProfile?.unlocked_colors) ? currentProfile.unlocked_colors : [];
+      return ids.filter(x => typeof x === 'string' && ownSkinUrl(x))
+        .map((id, i) => ownSkinItem(id, i + 1));
+    }
+
     function allSkinItems() {
-      return [...COLOR_TIERS.free, ...COLOR_TIERS.tier100, ...COLOR_TIERS.tier250, ...COLOR_TIERS.tier500];
+      return [...COLOR_TIERS.free, ...COLOR_TIERS.tier100, ...COLOR_TIERS.tier250,
+        ...COLOR_TIERS.tier500, ...purchasedOwnSkinItems()];
     }
 
     function findSkinItem(id) {
-      return allSkinItems().find(item => item.id.toLowerCase() === String(id || '').toLowerCase());
+      return allSkinItems().find(item => item.id.toLowerCase() === String(id || '').toLowerCase()) ||
+        (ownSkinUrl(id) ? ownSkinItem(id) : null);
     }
 
     function skinOwned(item) {
-      return item.cost === 0 || !!currentProfile?.unlocked_colors?.includes(item.id);
+      return !item.isDraft && (item.cost === 0 ||
+        !!currentProfile?.unlocked_colors?.includes(item.id));
+    }
+
+    function setOwnSkinNotice(message, error = false) {
+      const tip = document.getElementById('ownSkinTip');
+      if (!tip) return;
+      tip.textContent = message;
+      tip.classList.toggle('bx-own-error', error);
+    }
+
+    // Nie zapisujemy obrazu w bazie jako data:URL; Supabase Storage przechowuje plik,
+    // a profile przechowuje tylko publiczny URL własnego skina.
+    async function handleOwnSkinFile(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      if (ownSkinPurchaseBusy) return;
+      const types = ['image/png', 'image/jpeg', 'image/webp'];
+      if (!types.includes(file.type)) {
+        setOwnSkinNotice('Wybierz obraz PNG, JPG lub WEBP.', true); return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setOwnSkinNotice('Plik jest za duży. Maksymalnie 5 MB.', true); return;
+      }
+      const sourceUrl = URL.createObjectURL(file);
+      try {
+        const image = new Image();
+        const decoded = new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = () => reject(new Error('Nie udało się odczytać obrazu.'));
+        });
+        image.src = sourceUrl;
+        await decoded;
+        if (image.naturalWidth < 1 || image.naturalHeight < 1) throw new Error('Pusty obraz.');
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 512;
+        const c = canvas.getContext('2d');
+        const side = Math.min(image.naturalWidth, image.naturalHeight);
+        c.drawImage(image, (image.naturalWidth - side) / 2,
+          (image.naturalHeight - side) / 2, side, side, 0, 0, 512, 512);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (!blob || blob.size > 2 * 1024 * 1024) {
+          throw new Error('Nie można przygotować obrazu do wgrania (limit 2 MB po obróbce).');
+        }
+        // Zwolnij podgląd poprzedniego niewysłanego obrazu.
+        if (ownSkinDraft) {
+          delete loadedSkins[ownSkinDraft.customUrl];
+          URL.revokeObjectURL(ownSkinDraft.customUrl);
+        }
+        const previewUrl = URL.createObjectURL(blob);
+        ownSkinDraft = {
+          id: `draft:${Date.now()}`, type: 'custom', customUrl: previewUrl,
+          name: 'Twój nowy skin', cost: OWN_SKIN_COST, blob, isDraft: true
+        };
+        previewSkinItem = ownSkinDraft;
+        setOwnSkinNotice('Obraz gotowy do podglądu. Zakup nastąpi dopiero po kliknięciu „Kup za 1000 pkt”.');
+        renderColorPalette();
+        // Przenieś uwagę na animowany podgląd.
+        document.getElementById('colorShopScroll').scrollTop = 0;
+      } catch (error) {
+        setOwnSkinNotice(error.message || 'Błąd odczytu pliku.', true);
+      } finally {
+        URL.revokeObjectURL(sourceUrl);
+      }
+    }
+
+    function renderPurchasedOwnSkins() {
+      const panel = document.getElementById('ownedSkinPanel');
+      const grid = document.getElementById('ownedSkinGrid');
+      const items = purchasedOwnSkinItems();
+      panel.style.display = items.length ? 'block' : 'none';
+      grid.replaceChildren();
+      for (const item of items) {
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'bx-own-skin-tile' +
+          (chosenPlayerColor === item.id ? ' selected' : '') +
+          (previewSkinItem?.id === item.id ? ' previewing' : '');
+        tile.style.backgroundImage = `url("${item.customUrl}")`;
+        tile.title = item.name + ' (kupiony)';
+        tile.setAttribute('aria-label', 'Podgląd: ' + item.name);
+        tile.addEventListener('click', () => chooseSkinForPreview(item));
+        grid.appendChild(tile);
+      }
+    }
+
+    async function purchaseOwnSkin(item) {
+      if (!item?.isDraft || !item.blob || ownSkinPurchaseBusy) return;
+      if (!sb || !currentUser || !currentProfile) {
+        alert('Aby kupić własny skin, zaloguj się na swoje konto.'); return;
+      }
+      if (!confirm(`Kupić i zapisać własny skin za ${OWN_SKIN_COST} punktów?`)) return;
+      const action = document.getElementById('skinPreviewAction');
+      const uploadButton = document.getElementById('ownSkinPickBtn');
+      ownSkinPurchaseBusy = true;
+      action.disabled = true;
+      action.textContent = 'Zapisywanie skina...';
+      uploadButton.disabled = true;
+      let filePath = null;
+      try {
+        // Czytaj stan z bazy przed transakcją, nie z localStorage.
+        const { data: dbProfile, error: readError } = await sb.from('profiles')
+          .select('points,unlocked_colors').eq('id', currentUser.id).single();
+        if (readError) throw readError;
+        const balance = Number(dbProfile?.points || 0);
+        if (balance < OWN_SKIN_COST) throw new Error(`Potrzebujesz 1000 pkt. Masz ${balance} pkt.`);
+
+        // Ten sam publiczny bucket „skins”, z którego korzysta już system klanów.
+        filePath = `custom_${currentUser.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
+        const { error: uploadError } = await sb.storage.from('skins').upload(filePath, item.blob,
+          { contentType: 'image/png', cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = sb.storage.from('skins').getPublicUrl(filePath);
+        const publicUrl = urlData?.publicUrl;
+        const purchasedId = `custom:${publicUrl}`;
+        if (!ownSkinUrl(purchasedId)) throw new Error('Nieprawidłowy adres przesłanego skina.');
+
+        const previous = Array.isArray(dbProfile.unlocked_colors) ? dbProfile.unlocked_colors : [];
+        // Warunek .eq('points', balance) chroni przed przypadkowym jednoczesnym zakupem
+        // z dwóch kart. W produkcji warto dodatkowo wymusić zakup po stronie SQL/RPC.
+        const { data: updated, error: updateError } = await sb.from('profiles')
+          .update({
+            points: balance - OWN_SKIN_COST,
+            unlocked_colors: [...new Set([...previous, purchasedId])],
+            selected_color: purchasedId
+          })
+          .eq('id', currentUser.id).eq('points', balance)
+          .select('points,unlocked_colors,selected_color').maybeSingle();
+        if (updateError) throw updateError;
+        if (!updated) throw new Error('Stan punktów zmienił się. Odśwież sklep i spróbuj ponownie.');
+        // Nie pozostawiaj pliku bez zapisanego zakupu.
+        filePath = null;
+        currentProfile.points = updated.points;
+        currentProfile.unlocked_colors = updated.unlocked_colors;
+        currentProfile.selected_color = purchasedId;
+        chosenPlayerColor = purchasedId;
+        try {
+          localStorage.setItem('bubblex_color', purchasedId);
+          localStorage.setItem('bubblex_profile', JSON.stringify(currentProfile));
+        } catch (_) {} // Zakup w bazie już się powiódł: brak storage nie jest porażką.
+        previewSkinItem = findSkinItem(purchasedId) || ownSkinItem(purchasedId);
+        delete loadedSkins[item.customUrl];
+        URL.revokeObjectURL(item.customUrl);
+        ownSkinDraft = null;
+        setOwnSkinNotice('Skin zapisany na koncie. Możesz go wybierać ponownie bez kolejnej opłaty.');
+        updateColorPreviewUI();
+        updateUserUI();
+        renderColorPalette();
+        alert('Własny skin kupiony za 1000 pkt i założony!');
+      } catch (error) {
+        if (filePath) {
+          try { await sb.storage.from('skins').remove([filePath]); } catch (_) {}
+        }
+        setOwnSkinNotice('Nie udało się kupić skina: ' + (error.message || 'błąd zapisu'), true);
+        alert('Nie udało się kupić skina. Punkty nie powinny zostać pobrane. ' + (error.message || ''));
+      } finally {
+        ownSkinPurchaseBusy = false;
+        uploadButton.disabled = false;
+        renderColorPalette();
+      }
     }
 
     function chooseSkinForPreview(item) {
@@ -1294,8 +1531,11 @@
       document.getElementById('skinPreviewName').textContent = item.name;
       document.getElementById('skinPreviewState').textContent = equipped ? 'Założony' : owned ? 'Odblokowany' : `${item.cost} pkt`;
       const action = document.getElementById('skinPreviewAction');
-      action.disabled = equipped;
-      action.textContent = equipped ? 'Ten kolor jest już założony' : owned ? 'Załóż ten kolor' : `Kup za ${item.cost} pkt`;
+      action.disabled = ownSkinPurchaseBusy || equipped;
+      action.textContent = ownSkinPurchaseBusy ? 'Zapisywanie skina...' :
+        equipped ? (item.type === 'custom' ? 'Ten skin jest już założony' : 'Ten kolor jest już założony') :
+        owned ? (item.type === 'custom' ? 'Załóż ten skin' : 'Załóż ten kolor') :
+        (item.isDraft ? `Kup i dodaj za ${OWN_SKIN_COST} pkt` : `Kup za ${item.cost} pkt`);
       const wallet = document.getElementById('colorShopWallet');
       wallet.textContent = currentProfile ? `Twoje punkty: ${currentProfile.points || 0} pkt` : 'Zaloguj się, aby kupować';
     }
@@ -1304,8 +1544,9 @@
     function confirmSkinPreviewChoice() {
       const item = previewSkinItem;
       if (!item) return;
-      if (skinOwned(item)) selectColor(item.id);
-      else buyColor(item); // Istniejące potwierdzenie transakcji i zapis w Supabase.
+      if (item.isDraft) purchaseOwnSkin(item);
+      else if (skinOwned(item)) selectColor(item.id);
+      else buyColor(item); // Istniejące potwierdzenie i zapis w Supabase.
     }
 
     function renderColorPalette() {
@@ -1345,6 +1586,7 @@
       populate('grid100', COLOR_TIERS.tier100);
       populate('grid250', COLOR_TIERS.tier250);
       populate('grid500', COLOR_TIERS.tier500);
+      renderPurchasedOwnSkins();
       updateSkinPreviewDetails();
     }
 
@@ -1355,7 +1597,18 @@
       const canvas = document.getElementById('skinPreviewCanvas');
       if (!canvas) return;
       const c = canvas.getContext('2d');
-      const w = canvas.width, h = canvas.height;
+      // CSS i fizyczne piksele canvas muszą mieć to samo proporcje, inaczej koło
+      // wygląda jak elipsa na różnych monitorach i rozmiarach okna.
+      const box = canvas.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const pixelW = Math.round(box.width * dpr), pixelH = Math.round(box.height * dpr);
+      if (canvas.width !== pixelW || canvas.height !== pixelH) {
+        canvas.width = pixelW;
+        canvas.height = pixelH;
+      }
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = box.width, h = box.height;
       const seconds = timestamp / 1000;
 
       // Świat gry: delikatnie przesuwająca się siatka i płynąca kulka.
@@ -1365,7 +1618,7 @@
       c.save();
       c.strokeStyle = 'rgba(75, 102, 142, .18)';
       c.lineWidth = 1;
-      const grid = 48, drift = (seconds * 16) % grid;
+      const grid = 27, drift = (seconds * 16) % grid;
       c.beginPath();
       for (let gx = -grid + drift; gx < w + grid; gx += grid) {
         c.moveTo(gx, 0); c.lineTo(gx, h);
@@ -1377,9 +1630,9 @@
       c.restore();
 
       const item = previewSkinItem || COLOR_TIERS.free[0];
-      const x = w / 2 + Math.sin(seconds * 1.35) * 110;
-      const y = h / 2 + Math.sin(seconds * 2.1) * 6;
-      const radius = 58;
+      const radius = Math.min(58, h / 2 - 12);
+      const x = w / 2 + Math.sin(seconds * 1.35) * Math.min(34, w / 2 - radius - 8);
+      const y = h / 2 + Math.sin(seconds * 2.1) * 5;
 
       c.save();
       c.shadowColor = 'rgba(0, 0, 0, .45)';
@@ -1390,6 +1643,8 @@
       if (item.isRainbow) {
         // Ta sama zmiana barwy w czasie, co w grze.
         c.fillStyle = `hsl(${(Date.now() / 15) % 360}, 100%, 50%)`;
+      } else if (item.type === 'custom') {
+        c.fillStyle = '#213145'; // Tło podczas wczytywania obrazka.
       } else if (item.type) {
         c.fillStyle = c.createPattern(getPatternCanvas(item.id), 'repeat') || item.color || '#ff2233';
       } else {
@@ -1397,6 +1652,16 @@
       }
       c.fill();
       c.restore();
+
+      if (item.type === 'custom' && item.customUrl) {
+        const img = getSkinImage(item.customUrl);
+        if (img?.complete && img.naturalWidth) {
+          c.save();
+          c.beginPath(); c.arc(x, y, radius, 0, Math.PI * 2); c.clip();
+          c.drawImage(img, x - radius, y - radius, radius * 2, radius * 2);
+          c.restore();
+        }
+      }
 
       c.save();
       c.beginPath();
@@ -1407,12 +1672,18 @@
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillStyle = item.id === '#ffffff' ? '#11141f' : '#ffffff';
-      c.font = 'bold 22px Arial, sans-serif';
+      c.font = `bold ${Math.round(radius * .35)}px Arial, sans-serif`;
       const rawName = currentProfile?.username || 'Gracz';
       const name = rawName.length > 13 ? rawName.slice(0, 13) + '…' : rawName;
-      c.fillText(name, x, y - 10, radius * 1.8);
-      c.font = 'bold 16px Arial, sans-serif';
-      c.fillText('250', x, y + 15);
+      if (item.type === 'custom') {
+        c.strokeStyle = 'rgba(0,0,0,.7)';
+        c.lineWidth = 3;
+        c.strokeText(name, x, y - radius * .15, radius * 1.8);
+      }
+      c.fillText(name, x, y - radius * .15, radius * 1.8);
+      c.font = `bold ${Math.round(radius * .27)}px Arial, sans-serif`;
+      if (item.type === 'custom') c.strokeText('250', x, y + radius * .32);
+      c.fillText('250', x, y + radius * .32);
       c.restore();
 
       skinPreviewAnimationId = requestAnimationFrame(drawSkinPreview);
@@ -1449,7 +1720,11 @@
       preview.style.backgroundColor = "";
       preview.style.backgroundImage = "";
 
-      if (chosenPlayerColor === "rainbow") {
+      if (ownSkinUrl(chosenPlayerColor)) {
+        preview.style.backgroundImage = `url("${ownSkinUrl(chosenPlayerColor)}")`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
+      } else if (chosenPlayerColor === "rainbow") {
         preview.classList.add("rainbow-gradient");
       } else if (chosenPlayerColor.startsWith("pat_")) {
         const pCanvas = getPatternCanvas(chosenPlayerColor);
@@ -2557,6 +2832,9 @@
               const pattern = ctx.createPattern(pCanvas, "repeat");
               ctx.fillStyle = pattern;
               ctx.fill();
+            } else if (ownSkinUrl(chosenPlayerColor)) {
+              ctx.fillStyle = '#243447';
+              ctx.fill();
             } else {
               ctx.fillStyle = chosenPlayerColor;
               ctx.fill();
@@ -2566,9 +2844,11 @@
             ctx.fill();
           }
 
-          const skinImg = (isMyCell && currentClan && currentClan.skin_url)
-            ? getSkinImage(currentClan.skin_url)
-            : null;
+          // Własny skin gracza ma pierwszeństwo przed skórką klanu.
+          const personalSkinUrl = isMyCell ? ownSkinUrl(chosenPlayerColor) : null;
+          const skinImg = personalSkinUrl ? getSkinImage(personalSkinUrl) :
+            (isMyCell && currentClan && currentClan.skin_url) ?
+              getSkinImage(currentClan.skin_url) : null;
 
           if (skinImg && skinImg.complete && skinImg.naturalWidth !== 0) {
             ctx.save();
