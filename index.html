@@ -375,6 +375,19 @@
       text-underline-offset: 3px;
     }
     #loginModal .bx-forgot-link:hover { color: #a1edff; }
+    #forgotPasswordModal .bx-change-email {
+      align-self: flex-start;
+      border: 0;
+      background: transparent;
+      color: #43d7ff;
+      font: 600 12px Arial, sans-serif;
+      padding: 2px 0;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    #forgotPasswordModal .bx-change-email:hover { color: #a1edff; }
+
     #loginModal .bx-forgot-link:focus-visible { outline: 2px solid #43d7ff; outline-offset: 3px; }
     .bx-auth-description {
       color: #9fb1c7;
@@ -1039,8 +1052,9 @@
       <!-- Krok 1: wiadomość z bezpiecznym linkiem na e-mail użytkownika -->
       <div class="sub-modal" id="forgotPasswordModal" aria-label="Odzyskiwanie hasła">
         <h3>ODZYSKIWANIE HASŁA</h3>
-        <p class="bx-auth-description">Podaj adres e-mail użyty przy rejestracji konta BubbleX.pl. Wyślemy link, dzięki któremu ustawisz nowe hasło.</p>
+        <p class="bx-auth-description" id="passwordResetDescription">Na ostatnio używany adres e-mail wyślemy link do ustawienia nowego hasła.</p>
         <input type="email" id="passwordResetEmail" class="sub-input" placeholder="Adres e-mail konta" autocomplete="email" maxlength="254">
+        <button type="button" id="passwordResetChangeEmailBtn" class="bx-change-email" style="display:none" onclick="useAnotherPasswordResetEmail()">Użyj innego adresu e-mail</button>
         <div id="passwordResetEmailStatus" class="bx-auth-notice" role="status" aria-live="polite" style="display:none"></div>
         <button type="button" id="sendPasswordResetBtn" class="btn-small cyan" style="padding:10px;" onclick="sendPasswordResetEmail()">Wyślij link do zmiany hasła</button>
         <button type="button" class="btn-small" onclick="closeModal('forgotPasswordModal'); openModal('loginModal');">Wróć do logowania</button>
@@ -1295,46 +1309,111 @@
       node.style.display = message ? 'block' : 'none';
     }
 
+    // Zapamiętujemy WYŁĄCZNIE e-mail ostatniego konta na tym urządzeniu.
+    // Hasła nie zapisujemy. Działa nawet po wylogowaniu, lecz nie przenosi się
+    // automatycznie do innej przeglądarki lub urządzenia.
+    const BX_LAST_ACCOUNT_EMAIL_KEY = 'bubblex_last_account_email';
+
+    function rememberAccountEmail(email) {
+      const normalized = String(email || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return;
+      try { localStorage.setItem(BX_LAST_ACCOUNT_EMAIL_KEY, normalized); } catch (_) {}
+    }
+
+    function getRememberedAccountEmail() {
+      // Podczas aktywnej sesji pierwszeństwo ma e-mail zalogowanego konta.
+      const active = currentUser?.email;
+      if (active && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(active)) return active.trim().toLowerCase();
+      try {
+        const stored = localStorage.getItem(BX_LAST_ACCOUNT_EMAIL_KEY) || '';
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(stored)) return stored;
+      } catch (_) {}
+      // Wsparcie dla graczy, którzy logowali się jeszcze przed tą aktualizacją.
+      const cached = currentProfile?.email || '';
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cached) ? cached.trim().toLowerCase() : '';
+    }
+
+    function maskResetEmail(email) {
+      const parts = String(email).split('@');
+      if (parts.length !== 2) return 'zapamiętany adres';
+      const name = parts[0];
+      return (name.length > 1 ? name.charAt(0) + '•••' : '•••') + '@' + parts[1];
+    }
+
+    function useAnotherPasswordResetEmail() {
+      const input = document.getElementById('passwordResetEmail');
+      document.getElementById('passwordResetDescription').textContent =
+        'Wpisz e-mail innego konta, jeżeli nie chcesz używać ostatnio zapamiętanego adresu.';
+      document.getElementById('passwordResetChangeEmailBtn').style.display = 'none';
+      input.style.display = 'block';
+      input.value = '';
+      document.getElementById('sendPasswordResetBtn').textContent = 'Wyślij link do zmiany hasła';
+      showAuthNotice('passwordResetEmailStatus', '');
+      input.focus();
+    }
+
     function openForgotPasswordModal(message = '', kind = '') {
       closeModal('loginModal');
       closeModal('newPasswordModal');
-      const userInput = document.getElementById('loginUsername');
-      const emailInput = document.getElementById('passwordResetEmail');
-      if (userInput && /@/.test(userInput.value) && !emailInput.value) emailInput.value = userInput.value.trim();
-      showAuthNotice('passwordResetEmailStatus', message, kind);
+      const input = document.getElementById('passwordResetEmail');
+      const desc = document.getElementById('passwordResetDescription');
+      const changeBtn = document.getElementById('passwordResetChangeEmailBtn');
+      const sendBtn = document.getElementById('sendPasswordResetBtn');
+      const remembered = getRememberedAccountEmail();
+      const fromLogin = !message; // Komunikaty o błędnym linku nie wysyłają kolejnego e-maila.
+
       document.getElementById('menuOverlay').style.display = 'flex';
       openModal('forgotPasswordModal');
-      emailInput.focus();
+      showAuthNotice('passwordResetEmailStatus', message, kind);
+
+      if (remembered) {
+        input.value = remembered;
+        input.style.display = 'none';
+        changeBtn.style.display = 'block';
+        desc.textContent = 'Ostatnio używane konto: ' + maskResetEmail(remembered) +
+          '. Link do zmiany hasła wyślemy na ten adres.';
+        sendBtn.textContent = 'Wyślij link ponownie';
+        // Jedno kliknięcie „Zapomniałem hasła” wystarczy do wysłania linku.
+        if (fromLogin) void sendPasswordResetEmail();
+      } else {
+        input.value = '';
+        input.style.display = 'block';
+        changeBtn.style.display = 'none';
+        desc.textContent = 'Nie ma jeszcze zapamiętanego konta w tej przeglądarce. Podaj jego adres e-mail, aby otrzymać link do zmiany hasła.';
+        sendBtn.textContent = 'Wyślij link do zmiany hasła';
+        input.focus();
+      }
     }
 
     async function sendPasswordResetEmail() {
       const input = document.getElementById('passwordResetEmail');
       const email = input.value.trim();
       const button = document.getElementById('sendPasswordResetBtn');
+      if (button.disabled) return; // Nie wysyłaj wielu żądań jednocześnie.
       if (!sb) return showAuthNotice('passwordResetEmailStatus', 'Usługa kont jest chwilowo niedostępna.', 'error');
       if (!input.checkValidity() || !email) {
         return showAuthNotice('passwordResetEmailStatus', 'Podaj prawidłowy adres e-mail.', 'error');
       }
       button.disabled = true;
       button.textContent = 'Wysyłanie...';
-      showAuthNotice('passwordResetEmailStatus', 'Wysyłam prośbę o zmianę hasła...');
+      showAuthNotice('passwordResetEmailStatus', 'Wysyłam link do zmiany hasła...');
       try {
         const { error } = await sb.auth.resetPasswordForEmail(email, {
           redirectTo: BX_PASSWORD_REDIRECT
         });
         if (error) throw error;
-        // Nie ujawniamy, czy wskazany e-mail jest zarejestrowany.
+        // Nie ujawniamy, czy konto dla tego adresu istnieje.
         showAuthNotice('passwordResetEmailStatus',
-          'Jeżeli istnieje konto przypisane do tego adresu, otrzymasz e-mail z linkiem. Sprawdź również folder Spam.', 'success');
+          'Jeżeli istnieje konto przypisane do tego adresu, otrzymasz e-mail z linkiem. Sprawdź również Spam.', 'success');
       } catch (error) {
         console.error('BubbleX: wysłanie resetu hasła nie powiodło się:', error);
         const isLimited = /rate|limit|too many|429/i.test(error.message || '');
         showAuthNotice('passwordResetEmailStatus', isLimited
           ? 'Zbyt wiele prób wysłania e-maila. Spróbuj ponownie później.'
-          : 'Nie udało się wysłać wiadomości. Sprawdź adres lub konfigurację poczty Supabase.', 'error');
+          : 'Nie udało się wysłać linku. Spróbuj ponownie lub wybierz inny adres.', 'error');
       } finally {
         button.disabled = false;
-        button.textContent = 'Wyślij link do zmiany hasła';
+        button.textContent = input.style.display === 'none' ? 'Wyślij link ponownie' : 'Wyślij link do zmiany hasła';
       }
     }
 
@@ -1398,6 +1477,7 @@
           setTimeout(updateUserUI, 0);
         } else if (session && !recoverySessionActive) {
           currentUser = session.user;
+          rememberAccountEmail(session.user?.email);
           // Nie wywołuj asynchronicznych metod Supabase w samym callbacku auth.
           setTimeout(() => loadUserData().catch(console.error), 0);
         }
@@ -1995,6 +2075,7 @@
 
       currentUser = authData.user;
       currentProfile = profile;
+      rememberAccountEmail(authData.user?.email || profile.email);
 
       if (profile.selected_color) {
         chosenPlayerColor = profile.selected_color;
@@ -2065,6 +2146,7 @@
         if (!data || !data.user) {
           return notice('Nie otrzymano potwierdzenia rejestracji. Sprawdź ustawienia Auth w Supabase.');
         }
+        rememberAccountEmail(email);
         if (!data.session) {
           // To normalne, gdy w Auth włączone jest potwierdzanie e-maila.
           return notice('Rejestracja została przyjęta. Sprawdź pocztę (także Spam) i potwierdź e-mail przed zalogowaniem.', 'success');
@@ -2101,7 +2183,10 @@
         if (!currentProfile) updateUserUI();
         return;
       }
-      if (session) currentUser = session.user;
+      if (session) {
+        currentUser = session.user;
+        if (!recoverySessionActive) rememberAccountEmail(session.user?.email);
+      }
 
       try {
         const uid = currentUser ? currentUser.id : (currentProfile ? currentProfile.id : null);
